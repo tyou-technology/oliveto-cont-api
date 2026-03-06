@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ArticleStatus } from '@common/types/enums';
-import { PrismaService } from '@modules/prisma/prisma.service';
-import { ArticlesService } from '@modules/articles/articles.service';
+import { ArticlesRepository } from '@modules/articles/repository/articles.repository';
+import { ArticlesService } from '@modules/articles/service/articles.service';
 import { CreateArticleDto } from '@modules/articles/dto/create-article.dto';
 import { UpdateArticleDto } from '@modules/articles/dto/update-article.dto';
 import { ArticleQueryDto } from '@modules/articles/dto/article-query.dto';
@@ -64,19 +64,17 @@ const publishedArticle = {
   articleTags: [mockTag2],
 };
 
-const prismaP2025 = () => Object.assign(new Error('Record not found'), { code: 'P2025' });
-
 const dbError = () => new Error('Connection refused');
 
-const mockPrisma = {
-  article: {
-    findUnique: jest.fn(),
-    findMany: jest.fn(),
-    count: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  },
+const mockArticlesRepo = {
+  findBySlug: jest.fn(),
+  findById: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  publish: jest.fn(),
+  archive: jest.fn(),
+  delete: jest.fn(),
+  findMany: jest.fn(),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -86,7 +84,7 @@ describe('ArticlesService', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ArticlesService, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [ArticlesService, { provide: ArticlesRepository, useValue: mockArticlesRepo }],
     }).compile();
 
     service = module.get<ArticlesService>(ArticlesService);
@@ -97,7 +95,7 @@ describe('ArticlesService', () => {
 
   describe('generateUniqueSlug()', () => {
     it('should return a slugified version of the title when no collision exists', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
 
       const result = await service.generateUniqueSlug('Como Abrir Uma Empresa');
 
@@ -105,25 +103,23 @@ describe('ArticlesService', () => {
     });
 
     it('should append a numeric suffix when the base slug is already taken', async () => {
-      mockPrisma.article.findUnique.mockResolvedValueOnce(mockArticle).mockResolvedValue(null);
+      mockArticlesRepo.findBySlug.mockResolvedValueOnce(mockArticle).mockResolvedValue(null);
 
       const result = await service.generateUniqueSlug('Como Abrir Uma Empresa no Brasil');
 
       expect(result).toMatch(/^como-abrir-uma-empresa-no-brasil-\d+$/);
     });
 
-    it('should query the database to check slug uniqueness', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
+    it('should query the repository to check slug uniqueness', async () => {
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
 
       await service.generateUniqueSlug('Guia Tributário');
 
-      expect(mockPrisma.article.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { slug: 'guia-tributario' } }),
-      );
+      expect(mockArticlesRepo.findBySlug).toHaveBeenCalledWith('guia-tributario');
     });
 
     it('should handle special characters and accents in the title', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
 
       const result = await service.generateUniqueSlug('Tributação: O Guia Completo!');
 
@@ -132,7 +128,7 @@ describe('ArticlesService', () => {
     });
 
     it('should propagate unexpected database errors', async () => {
-      mockPrisma.article.findUnique.mockRejectedValue(dbError());
+      mockArticlesRepo.findBySlug.mockRejectedValue(dbError());
 
       await expect(service.generateUniqueSlug('Any Title')).rejects.toThrow('Connection refused');
     });
@@ -151,53 +147,53 @@ describe('ArticlesService', () => {
     const authorId = mockAuthor.id;
 
     it('should create an article and return it with the author relation', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       const result = await service.create(createDto, authorId);
 
-      expect(mockPrisma.article.create).toHaveBeenCalledTimes(1);
+      expect(mockArticlesRepo.create).toHaveBeenCalledTimes(1);
       expect(result).toEqual(mockArticle);
     });
 
     it('should generate and persist a unique slug derived from the title', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.slug).toBe('como-abrir-uma-empresa-no-brasil');
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.slug).toBe('como-abrir-uma-empresa-no-brasil');
     });
 
     it('should default status to DRAFT on creation', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.status).toBe(ArticleStatus.DRAFT);
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.status).toBe(ArticleStatus.DRAFT);
     });
 
     it('should associate the article with the provided authorId', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.authorId).toBe(authorId);
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.authorId).toBe(authorId);
     });
 
     it('should connect the provided tag ids as articleTags relation', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      const dataStr = JSON.stringify(callArg.data);
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      const dataStr = JSON.stringify(callArg);
       expect(dataStr).toContain(mockTag.id);
     });
 
@@ -207,8 +203,8 @@ describe('ArticlesService', () => {
         content: 'Conteúdo.',
         readingTime: 1,
       };
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue({ ...mockArticle, articleTags: [] });
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue({ ...mockArticle, articleTags: [] });
 
       const result = await service.create(dtoWithoutTags, authorId);
 
@@ -216,33 +212,33 @@ describe('ArticlesService', () => {
     });
 
     it('should persist the readingTime provided in the DTO', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.readingTime).toBe(5);
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.readingTime).toBe(5);
     });
 
     it('should initialise visitsCount to 0 on creation', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.visitsCount).toBe(0);
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.visitsCount).toBe(0);
     });
 
     it('should not set publishedAt on creation', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.publishedAt).toBeUndefined();
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.publishedAt).toBeUndefined();
     });
 
     it('should persist optional SEO fields when provided', async () => {
@@ -251,29 +247,29 @@ describe('ArticlesService', () => {
         seoTitle: 'SEO Title Custom',
         seoDescription: 'Descrição para motores de busca.',
       };
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue({ ...mockArticle, ...dtoWithSeo });
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue({ ...mockArticle, ...dtoWithSeo });
 
       await service.create(dtoWithSeo, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.seoTitle).toBe('SEO Title Custom');
-      expect(callArg.data.seoDescription).toBe('Descrição para motores de busca.');
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.seoTitle).toBe('SEO Title Custom');
+      expect(callArg.seoDescription).toBe('Descrição para motores de busca.');
     });
 
     it('should persist the briefing field when provided', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
       await service.create(createDto, authorId);
 
-      const callArg = mockPrisma.article.create.mock.calls[0][0];
-      expect(callArg.data.briefing).toBe('Um guia completo para abertura de empresas.');
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.briefing).toBe('Um guia completo para abertura de empresas.');
     });
 
     it('should propagate unexpected database errors', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.create.mockRejectedValue(dbError());
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockRejectedValue(dbError());
 
       await expect(service.create(createDto, authorId)).rejects.toThrow('Connection refused');
     });
@@ -283,42 +279,22 @@ describe('ArticlesService', () => {
 
   describe('findBySlug()', () => {
     it('should return the article with author and articleTags when the slug exists', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(publishedArticle);
+      mockArticlesRepo.findBySlug.mockResolvedValue(publishedArticle);
 
       const result = await service.findBySlug('declaracao-de-imposto-de-renda');
 
-      expect(mockPrisma.article.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { slug: 'declaracao-de-imposto-de-renda' } }),
-      );
+      expect(mockArticlesRepo.findBySlug).toHaveBeenCalledWith('declaracao-de-imposto-de-renda');
       expect(result).toEqual(publishedArticle);
     });
 
     it('should throw NotFoundException when the slug does not exist', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
 
       await expect(service.findBySlug('nonexistent-slug')).rejects.toThrow(NotFoundException);
     });
 
-    it('should include the author relation in the query', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(publishedArticle);
-
-      await service.findBySlug('declaracao-de-imposto-de-renda');
-
-      const callArg = mockPrisma.article.findUnique.mock.calls[0][0];
-      expect(callArg.include?.author || callArg.select?.author).toBeTruthy();
-    });
-
-    it('should include the articleTags relation in the query', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(publishedArticle);
-
-      await service.findBySlug('declaracao-de-imposto-de-renda');
-
-      const callArg = mockPrisma.article.findUnique.mock.calls[0][0];
-      expect(callArg.include?.articleTags || callArg.select?.articleTags).toBeTruthy();
-    });
-
     it('should propagate unexpected database errors', async () => {
-      mockPrisma.article.findUnique.mockRejectedValue(dbError());
+      mockArticlesRepo.findBySlug.mockRejectedValue(dbError());
 
       await expect(service.findBySlug('any-slug')).rejects.toThrow('Connection refused');
     });
@@ -328,24 +304,22 @@ describe('ArticlesService', () => {
 
   describe('findById()', () => {
     it('should return the article when the id exists', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(mockArticle);
+      mockArticlesRepo.findById.mockResolvedValue(mockArticle);
 
       const result = await service.findById('article_cuid_1');
 
-      expect(mockPrisma.article.findUnique).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'article_cuid_1' } }),
-      );
+      expect(mockArticlesRepo.findById).toHaveBeenCalledWith('article_cuid_1');
       expect(result).toEqual(mockArticle);
     });
 
     it('should throw NotFoundException when the id does not exist', async () => {
-      mockPrisma.article.findUnique.mockResolvedValue(null);
+      mockArticlesRepo.findById.mockRejectedValue(new NotFoundException());
 
       await expect(service.findById('nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('should propagate unexpected database errors', async () => {
-      mockPrisma.article.findUnique.mockRejectedValue(dbError());
+      mockArticlesRepo.findById.mockRejectedValue(dbError());
 
       await expect(service.findById('article_cuid_1')).rejects.toThrow('Connection refused');
     });
@@ -357,72 +331,72 @@ describe('ArticlesService', () => {
     it('should update and return the article with changed fields', async () => {
       const dto: UpdateArticleDto = { title: 'Novo Título Atualizado' };
       const updated = { ...mockArticle, title: 'Novo Título Atualizado' };
-      mockPrisma.article.update.mockResolvedValue(updated);
+      mockArticlesRepo.update.mockResolvedValue(updated);
 
       const result = await service.update('article_cuid_1', dto);
 
-      expect(mockPrisma.article.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'article_cuid_1' } }),
+      expect(mockArticlesRepo.update).toHaveBeenCalledWith(
+        'article_cuid_1',
+        expect.objectContaining({ title: 'Novo Título Atualizado' }),
       );
       expect(result.title).toBe('Novo Título Atualizado');
     });
 
     it('should regenerate the slug when the title changes', async () => {
       const dto: UpdateArticleDto = { title: 'Título Totalmente Novo' };
-      mockPrisma.article.findUnique.mockResolvedValue(null);
-      mockPrisma.article.update.mockResolvedValue({ ...mockArticle, title: dto.title });
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, title: dto.title });
 
       await service.update('article_cuid_1', dto);
 
-      const callArg = mockPrisma.article.update.mock.calls[0][0];
-      expect(callArg.data.slug).toBeDefined();
-      expect(callArg.data.slug).toBe('titulo-totalmente-novo');
+      const callArg = mockArticlesRepo.update.mock.calls[0][1];
+      expect(callArg.slug).toBeDefined();
+      expect(callArg.slug).toBe('titulo-totalmente-novo');
     });
 
     it('should not change the slug when the title is not updated', async () => {
       const dto: UpdateArticleDto = { briefing: 'Novo resumo.' };
-      mockPrisma.article.update.mockResolvedValue({ ...mockArticle, briefing: 'Novo resumo.' });
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, briefing: 'Novo resumo.' });
 
       await service.update('article_cuid_1', dto);
 
-      const callArg = mockPrisma.article.update.mock.calls[0][0];
-      expect(callArg.data.slug).toBeUndefined();
+      const callArg = mockArticlesRepo.update.mock.calls[0][1];
+      expect(callArg.slug).toBeUndefined();
     });
 
     it('should update the briefing field', async () => {
       const dto: UpdateArticleDto = { briefing: 'Resumo atualizado.' };
-      mockPrisma.article.update.mockResolvedValue({ ...mockArticle, briefing: dto.briefing });
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, briefing: dto.briefing });
 
       await service.update('article_cuid_1', dto);
 
-      const callArg = mockPrisma.article.update.mock.calls[0][0];
-      expect(callArg.data.briefing).toBe('Resumo atualizado.');
+      const callArg = mockArticlesRepo.update.mock.calls[0][1];
+      expect(callArg.briefing).toBe('Resumo atualizado.');
     });
 
     it('should update the readingTime field', async () => {
       const dto: UpdateArticleDto = { readingTime: 12 };
-      mockPrisma.article.update.mockResolvedValue({ ...mockArticle, readingTime: 12 });
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, readingTime: 12 });
 
       await service.update('article_cuid_1', dto);
 
-      const callArg = mockPrisma.article.update.mock.calls[0][0];
-      expect(callArg.data.readingTime).toBe(12);
+      const callArg = mockArticlesRepo.update.mock.calls[0][1];
+      expect(callArg.readingTime).toBe(12);
     });
 
     it('should reconnect articleTags when tagIds are provided', async () => {
       const dto: UpdateArticleDto = { tagIds: [mockTag2.id] };
-      mockPrisma.article.update.mockResolvedValue({ ...mockArticle, articleTags: [mockTag2] });
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, articleTags: [mockTag2] });
 
       await service.update('article_cuid_1', dto);
 
-      const callArg = mockPrisma.article.update.mock.calls[0][0];
-      const dataStr = JSON.stringify(callArg.data);
+      const callArg = mockArticlesRepo.update.mock.calls[0][1];
+      const dataStr = JSON.stringify(callArg);
       expect(dataStr).toContain(mockTag2.id);
     });
 
     it('should disconnect all articleTags when an empty tagIds array is provided', async () => {
       const dto: UpdateArticleDto = { tagIds: [] };
-      mockPrisma.article.update.mockResolvedValue({ ...mockArticle, articleTags: [] });
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, articleTags: [] });
 
       const result = await service.update('article_cuid_1', dto);
 
@@ -431,25 +405,23 @@ describe('ArticlesService', () => {
 
     it('should not modify articleTags when tagIds is not present in the DTO', async () => {
       const dto: UpdateArticleDto = { briefing: 'Somente o briefing muda.' };
-      mockPrisma.article.update.mockResolvedValue({ ...mockArticle, briefing: dto.briefing });
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, briefing: dto.briefing });
 
       await service.update('article_cuid_1', dto);
 
-      const callArg = mockPrisma.article.update.mock.calls[0][0];
-      const dataStr = JSON.stringify(callArg.data);
+      const callArg = mockArticlesRepo.update.mock.calls[0][1];
+      const dataStr = JSON.stringify(callArg);
       expect(dataStr).not.toContain('articleTags');
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {
-      mockPrisma.article.update.mockRejectedValue(prismaP2025());
+      mockArticlesRepo.update.mockRejectedValue(new NotFoundException());
 
-      await expect(service.update('nonexistent', { title: 'X' })).rejects.toThrow(
-        NotFoundException,
-      );
+      await expect(service.update('nonexistent', { title: 'X' })).rejects.toThrow(NotFoundException);
     });
 
     it('should propagate non-P2025 database errors', async () => {
-      mockPrisma.article.update.mockRejectedValue(dbError());
+      mockArticlesRepo.update.mockRejectedValue(dbError());
 
       await expect(service.update('article_cuid_1', { title: 'X' })).rejects.toThrow(
         'Connection refused',
@@ -460,36 +432,28 @@ describe('ArticlesService', () => {
   // ── publish ─────────────────────────────────────────────────────────────────
 
   describe('publish()', () => {
-    it('should set status to PUBLISHED and record publishedAt', async () => {
+    it('should delegate to the repository and return the published article', async () => {
       const published = {
         ...mockArticle,
         status: ArticleStatus.PUBLISHED,
-        publishedAt: expect.any(Date),
+        publishedAt: new Date(),
       };
-      mockPrisma.article.update.mockResolvedValue(published);
+      mockArticlesRepo.publish.mockResolvedValue(published);
 
       const result = await service.publish('article_cuid_1');
 
-      expect(mockPrisma.article.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'article_cuid_1' },
-          data: expect.objectContaining({
-            status: ArticleStatus.PUBLISHED,
-            publishedAt: expect.any(Date),
-          }),
-        }),
-      );
+      expect(mockArticlesRepo.publish).toHaveBeenCalledWith('article_cuid_1');
       expect(result.status).toBe(ArticleStatus.PUBLISHED);
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {
-      mockPrisma.article.update.mockRejectedValue(prismaP2025());
+      mockArticlesRepo.publish.mockRejectedValue(new NotFoundException());
 
       await expect(service.publish('nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('should propagate non-P2025 database errors', async () => {
-      mockPrisma.article.update.mockRejectedValue(dbError());
+      mockArticlesRepo.publish.mockRejectedValue(dbError());
 
       await expect(service.publish('article_cuid_1')).rejects.toThrow('Connection refused');
     });
@@ -498,24 +462,19 @@ describe('ArticlesService', () => {
   // ── archive ─────────────────────────────────────────────────────────────────
 
   describe('archive()', () => {
-    it('should set status to ARCHIVED', async () => {
+    it('should delegate to the repository and return the archived article', async () => {
       const archived = { ...mockArticle, status: ArticleStatus.ARCHIVED };
-      mockPrisma.article.update.mockResolvedValue(archived);
+      mockArticlesRepo.archive.mockResolvedValue(archived);
 
       const result = await service.archive('article_cuid_1');
 
-      expect(mockPrisma.article.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: 'article_cuid_1' },
-          data: expect.objectContaining({ status: ArticleStatus.ARCHIVED }),
-        }),
-      );
+      expect(mockArticlesRepo.archive).toHaveBeenCalledWith('article_cuid_1');
       expect(result.status).toBe(ArticleStatus.ARCHIVED);
     });
 
     it('should not reset publishedAt when archiving a previously published article', async () => {
       const archived = { ...publishedArticle, status: ArticleStatus.ARCHIVED };
-      mockPrisma.article.update.mockResolvedValue(archived);
+      mockArticlesRepo.archive.mockResolvedValue(archived);
 
       const result = await service.archive('article_cuid_2');
 
@@ -523,13 +482,13 @@ describe('ArticlesService', () => {
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {
-      mockPrisma.article.update.mockRejectedValue(prismaP2025());
+      mockArticlesRepo.archive.mockRejectedValue(new NotFoundException());
 
       await expect(service.archive('nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('should propagate non-P2025 database errors', async () => {
-      mockPrisma.article.update.mockRejectedValue(dbError());
+      mockArticlesRepo.archive.mockRejectedValue(dbError());
 
       await expect(service.archive('article_cuid_1')).rejects.toThrow('Connection refused');
     });
@@ -539,24 +498,22 @@ describe('ArticlesService', () => {
 
   describe('delete()', () => {
     it('should delete the article and return the deleted record', async () => {
-      mockPrisma.article.delete.mockResolvedValue(mockArticle);
+      mockArticlesRepo.delete.mockResolvedValue(mockArticle);
 
       const result = await service.delete('article_cuid_1');
 
-      expect(mockPrisma.article.delete).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'article_cuid_1' } }),
-      );
+      expect(mockArticlesRepo.delete).toHaveBeenCalledWith('article_cuid_1');
       expect(result).toEqual(mockArticle);
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {
-      mockPrisma.article.delete.mockRejectedValue(prismaP2025());
+      mockArticlesRepo.delete.mockRejectedValue(new NotFoundException());
 
       await expect(service.delete('nonexistent')).rejects.toThrow(NotFoundException);
     });
 
     it('should propagate non-P2025 database errors', async () => {
-      mockPrisma.article.delete.mockRejectedValue(dbError());
+      mockArticlesRepo.delete.mockRejectedValue(dbError());
 
       await expect(service.delete('article_cuid_1')).rejects.toThrow('Connection refused');
     });
@@ -569,8 +526,7 @@ describe('ArticlesService', () => {
 
     it('should return a paginated list of articles with meta', async () => {
       const articles = [publishedArticle, mockArticle];
-      mockPrisma.article.findMany.mockResolvedValue(articles);
-      mockPrisma.article.count.mockResolvedValue(2);
+      mockArticlesRepo.findMany.mockResolvedValue({ articles, total: 2 });
 
       const result = await service.list(baseQuery);
 
@@ -581,8 +537,7 @@ describe('ArticlesService', () => {
     });
 
     it('should return empty data and total 0 when no articles exist', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(0);
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [], total: 0 });
 
       const result = await service.list(baseQuery);
 
@@ -592,8 +547,7 @@ describe('ArticlesService', () => {
     });
 
     it('should calculate correct totalPages for multi-page results', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([publishedArticle]);
-      mockPrisma.article.count.mockResolvedValue(25);
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [publishedArticle], total: 25 });
 
       const result = await service.list({ page: 1, limit: 10 });
 
@@ -601,86 +555,47 @@ describe('ArticlesService', () => {
     });
 
     it('should apply correct skip/take for page 2', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([]);
-      mockPrisma.article.count.mockResolvedValue(20);
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [], total: 20 });
 
       await service.list({ page: 2, limit: 5 });
 
-      expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({ skip: 5, take: 5 }),
-      );
+      expect(mockArticlesRepo.findMany).toHaveBeenCalledWith(expect.any(Object), 5, 5);
     });
 
     it('should filter by status when provided in the query', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([publishedArticle]);
-      mockPrisma.article.count.mockResolvedValue(1);
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [publishedArticle], total: 1 });
 
       await service.list({ ...baseQuery, status: ArticleStatus.PUBLISHED });
 
-      expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({ status: ArticleStatus.PUBLISHED }),
-        }),
+      expect(mockArticlesRepo.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ status: ArticleStatus.PUBLISHED }),
+        expect.any(Number),
+        expect.any(Number),
       );
     });
 
     it('should filter articles by tagId through the articleTags relation', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([mockArticle]);
-      mockPrisma.article.count.mockResolvedValue(1);
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [mockArticle], total: 1 });
 
       await service.list({ ...baseQuery, tagId: mockTag.id });
 
-      const callArg = mockPrisma.article.findMany.mock.calls[0][0];
-      const whereStr = JSON.stringify(callArg.where);
+      const [where] = mockArticlesRepo.findMany.mock.calls[0];
+      const whereStr = JSON.stringify(where);
       expect(whereStr).toContain(mockTag.id);
     });
 
     it('should perform a search across title, briefing, and content when search is provided', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([publishedArticle]);
-      mockPrisma.article.count.mockResolvedValue(1);
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [publishedArticle], total: 1 });
 
       await service.list({ ...baseQuery, search: 'imposto' });
 
-      const callArg = mockPrisma.article.findMany.mock.calls[0][0];
-      const whereStr = JSON.stringify(callArg.where);
+      const [where] = mockArticlesRepo.findMany.mock.calls[0];
+      const whereStr = JSON.stringify(where);
       expect(whereStr).toContain('imposto');
     });
 
-    it('should order published articles by publishedAt descending by default', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([publishedArticle]);
-      mockPrisma.article.count.mockResolvedValue(1);
-
-      await service.list({ ...baseQuery, status: ArticleStatus.PUBLISHED });
-
-      expect(mockPrisma.article.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          orderBy: expect.objectContaining({ publishedAt: 'desc' }),
-        }),
-      );
-    });
-
-    it('should include the author relation in the list results', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([publishedArticle]);
-      mockPrisma.article.count.mockResolvedValue(1);
-
-      await service.list(baseQuery);
-
-      const callArg = mockPrisma.article.findMany.mock.calls[0][0];
-      expect(callArg.include?.author || callArg.select?.author).toBeTruthy();
-    });
-
-    it('should include the articleTags relation in the list results', async () => {
-      mockPrisma.article.findMany.mockResolvedValue([publishedArticle]);
-      mockPrisma.article.count.mockResolvedValue(1);
-
-      await service.list(baseQuery);
-
-      const callArg = mockPrisma.article.findMany.mock.calls[0][0];
-      expect(callArg.include?.articleTags || callArg.select?.articleTags).toBeTruthy();
-    });
-
     it('should propagate database errors', async () => {
-      mockPrisma.article.findMany.mockRejectedValue(dbError());
+      mockArticlesRepo.findMany.mockRejectedValue(dbError());
 
       await expect(service.list(baseQuery)).rejects.toThrow('Connection refused');
     });

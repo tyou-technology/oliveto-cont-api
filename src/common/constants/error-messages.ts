@@ -7,6 +7,7 @@ export const ERROR_MESSAGES = {
   ARTICLE_NOT_FOUND: 'Article not found',
   TAG_NOT_FOUND: 'Tag not found',
   TAG_NAME_ALREADY_EXISTS: 'Tag name already exists',
+  LEAD_NOT_FOUND: 'Lead not found',
 } as const;
 
 export const DB_ERROR_MESSAGES = {

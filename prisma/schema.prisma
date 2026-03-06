@@ -27,6 +27,15 @@ enum ArticleStatus {
   ARCHIVED
 }
 
+enum LeadOrigin {
+  CONTACT_FORM
+  NEWSLETTER
+  REFERRAL
+  SOCIAL_MEDIA
+  GOOGLE_ADS
+  ORGANIC_SEARCH
+}
+
 model User {
   id           String    @id @default(cuid())
   email        String    @unique
@@ -96,8 +105,9 @@ model Lead {
   company     String?
   service     String?
   message     String?    @db.Text
+  origin      LeadOrigin @default(CONTACT_FORM)
   status      LeadStatus @default(NEW)
-  source      String?
+  isRead      Boolean    @default(false) @map("is_read")
   notes       String?    @db.Text
   contactedAt DateTime?  @map("contacted_at")
   createdAt   DateTime   @default(now()) @map("created_at")

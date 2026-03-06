@@ -23,6 +23,7 @@ export const ROUTES = {
     BY_ID: ':id',
     STATUS: ':id/status',
     NOTES: ':id/notes',
+    READ: ':id/read',
   },
   TAGS: {
     BASE: 'tags',

@@ -10,6 +10,8 @@ import { TransformInterceptor } from './common/interceptors/transform.intercepto
 import { ArticlesModule } from './modules/articles/articles.module';
 import { TagsModule } from './modules/tags/tags.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { LeadsModule } from './modules/leads/leads.module';
+import { MailModule } from './modules/mail/mail.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
 
@@ -50,6 +52,8 @@ import { UsersModule } from './modules/users/users.module';
     AuthModule,
     ArticlesModule,
     TagsModule,
+    LeadsModule,
+    MailModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

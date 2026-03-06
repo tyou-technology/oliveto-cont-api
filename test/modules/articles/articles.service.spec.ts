@@ -6,6 +6,7 @@ import { ArticlesService } from '@modules/articles/service/articles.service';
 import { CreateArticleDto } from '@modules/articles/dto/create-article.dto';
 import { UpdateArticleDto } from '@modules/articles/dto/update-article.dto';
 import { ArticleQueryDto } from '@modules/articles/dto/article-query.dto';
+import { PublicArticleQueryDto } from '@modules/articles/dto/public-article-query.dto';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -598,6 +599,69 @@ describe('ArticlesService', () => {
       mockArticlesRepo.findMany.mockRejectedValue(dbError());
 
       await expect(service.list(baseQuery)).rejects.toThrow('Connection refused');
+    });
+  });
+
+  // ── listPublished ─────────────────────────────────────────────────────────────
+
+  describe('listPublished()', () => {
+    const baseQuery: PublicArticleQueryDto = { page: 1, limit: 10 };
+
+    it('should always include status PUBLISHED in the where clause', async () => {
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [publishedArticle], total: 1 });
+
+      await service.listPublished(baseQuery);
+
+      expect(mockArticlesRepo.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ status: ArticleStatus.PUBLISHED }),
+        expect.any(Number),
+        expect.any(Number),
+      );
+    });
+
+    it('should return paginated published articles with meta', async () => {
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [publishedArticle], total: 1 });
+
+      const result = await service.listPublished(baseQuery);
+
+      expect(result).toEqual({
+        data: [publishedArticle],
+        meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+      });
+    });
+
+    it('should return empty data when no published articles exist', async () => {
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [], total: 0 });
+
+      const result = await service.listPublished(baseQuery);
+
+      expect(result.data).toEqual([]);
+      expect(result.meta.total).toBe(0);
+      expect(result.meta.totalPages).toBe(0);
+    });
+
+    it('should filter by tagId when provided', async () => {
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [publishedArticle], total: 1 });
+
+      await service.listPublished({ ...baseQuery, tagId: mockTag.id });
+
+      const [where] = mockArticlesRepo.findMany.mock.calls[0];
+      expect(JSON.stringify(where)).toContain(mockTag.id);
+    });
+
+    it('should apply search across title, briefing, and content', async () => {
+      mockArticlesRepo.findMany.mockResolvedValue({ articles: [publishedArticle], total: 1 });
+
+      await service.listPublished({ ...baseQuery, search: 'imposto' });
+
+      const [where] = mockArticlesRepo.findMany.mock.calls[0];
+      expect(JSON.stringify(where)).toContain('imposto');
+    });
+
+    it('should propagate database errors', async () => {
+      mockArticlesRepo.findMany.mockRejectedValue(dbError());
+
+      await expect(service.listPublished(baseQuery)).rejects.toThrow('Connection refused');
     });
   });
 });

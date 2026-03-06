@@ -5,6 +5,7 @@ import { ArticleNotFoundException } from '@modules/articles/exception/article-no
 import { CreateArticleDto } from '@modules/articles/dto/create-article.dto';
 import { UpdateArticleDto } from '@modules/articles/dto/update-article.dto';
 import { ArticleQueryDto } from '@modules/articles/dto/article-query.dto';
+import { PublicArticleQueryDto } from '@modules/articles/dto/public-article-query.dto';
 import { ArticlesRepository } from '@modules/articles/repository/articles.repository';
 
 @Injectable()
@@ -71,6 +72,34 @@ export class ArticlesService {
 
   async delete(id: string) {
     return this.articlesRepository.delete(id);
+  }
+
+  async listPublished(query: PublicArticleQueryDto) {
+    const { page = 1, limit = 10, tagId, search } = query;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = { status: ArticleStatus.PUBLISHED };
+
+    if (tagId) where.articleTags = { some: { tagId } };
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { briefing: { contains: search, mode: 'insensitive' } },
+        { content: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const { articles, total } = await this.articlesRepository.findMany(where, skip, limit);
+
+    return {
+      data: articles,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages: total === 0 ? 0 : Math.ceil(total / limit),
+      },
+    };
   }
 
   async list(query: ArticleQueryDto) {

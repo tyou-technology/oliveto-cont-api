@@ -1,5 +1,6 @@
 export const ARTICLES_ROUTES = {
   BASE: 'articles',
+  PUBLISHED: 'published',
   SLUG: 'slug/:slug',
   PUBLISH: ':id/publish',
   ARCHIVE: ':id/archive',
@@ -14,6 +15,7 @@ export const ARTICLE_ACTIONS = {
   DELETE: 'delete',
   VIEW: 'view',
   LIST: 'list',
+  LIST_PUBLISHED: 'list_published',
 } as const;
 
 export const ARTICLE_ERROR_MESSAGES = {

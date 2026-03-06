@@ -29,6 +29,7 @@ import { ArticlesService } from '@modules/articles/service/articles.service';
 import { CreateArticleDto } from '@modules/articles/dto/create-article.dto';
 import { UpdateArticleDto } from '@modules/articles/dto/update-article.dto';
 import { ArticleQueryDto } from '@modules/articles/dto/article-query.dto';
+import { PublicArticleQueryDto } from '@modules/articles/dto/public-article-query.dto';
 
 @ApiTags('articles')
 @Controller(ARTICLES_ROUTES.BASE)
@@ -44,6 +45,18 @@ export class ArticlesController {
     return {
       ...result,
       _links: { self: { href: '/articles' } },
+    };
+  }
+
+  @ApiOperation({ summary: 'List published articles with tags (public)' })
+  @ApiOkResponse({ description: 'Paginated published article list' })
+  @Public()
+  @Get(ARTICLES_ROUTES.PUBLISHED)
+  async listPublishedArticles(@Query() query: PublicArticleQueryDto) {
+    const result = await this.articlesService.listPublished(query);
+    return {
+      ...result,
+      _links: { self: { href: '/articles/published' } },
     };
   }
 

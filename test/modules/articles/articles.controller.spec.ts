@@ -6,6 +6,7 @@ import { ArticlesService } from '@modules/articles/articles.service';
 import { CreateArticleDto } from '@modules/articles/dto/create-article.dto';
 import { UpdateArticleDto } from '@modules/articles/dto/update-article.dto';
 import { ArticleQueryDto } from '@modules/articles/dto/article-query.dto';
+import { PublicArticleQueryDto } from '@modules/articles/dto/public-article-query.dto';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ const mockArticlesService = {
   archive: jest.fn(),
   delete: jest.fn(),
   list: jest.fn(),
+  listPublished: jest.fn(),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -155,6 +157,58 @@ describe('ArticlesController', () => {
       mockArticlesService.list.mockRejectedValue(new Error('Connection refused'));
 
       await expect(controller.listArticles(query)).rejects.toThrow('Connection refused');
+    });
+  });
+
+  // ── GET /articles/published ───────────────────────────────────────────────────
+
+  describe('listPublishedArticles()', () => {
+    const query: PublicArticleQueryDto = { page: 1, limit: 10 };
+    const publishedResult = {
+      data: [publishedArticle],
+      meta: { page: 1, limit: 10, total: 1, totalPages: 1 },
+    };
+
+    it('should return published articles with _links', async () => {
+      mockArticlesService.listPublished.mockResolvedValue(publishedResult);
+
+      const result = await controller.listPublishedArticles(query);
+
+      expect(mockArticlesService.listPublished).toHaveBeenCalledWith(query);
+      expect(result).toMatchObject(publishedResult);
+      expect(result._links.self).toBeDefined();
+    });
+
+    it('should pass tagId filter to the service', async () => {
+      const tagQuery: PublicArticleQueryDto = { ...query, tagId: mockTag.id };
+      mockArticlesService.listPublished.mockResolvedValue(publishedResult);
+
+      await controller.listPublishedArticles(tagQuery);
+
+      expect(mockArticlesService.listPublished).toHaveBeenCalledWith(tagQuery);
+    });
+
+    it('should pass search query to the service', async () => {
+      const searchQuery: PublicArticleQueryDto = { ...query, search: 'imposto' };
+      mockArticlesService.listPublished.mockResolvedValue({ data: [], meta: {} });
+
+      await controller.listPublishedArticles(searchQuery);
+
+      expect(mockArticlesService.listPublished).toHaveBeenCalledWith(searchQuery);
+    });
+
+    it('should return empty results when no published articles match', async () => {
+      mockArticlesService.listPublished.mockResolvedValue({ data: [], meta: { total: 0, totalPages: 0 } });
+
+      const result = await controller.listPublishedArticles(query);
+
+      expect(result.data).toEqual([]);
+    });
+
+    it('should propagate service errors', async () => {
+      mockArticlesService.listPublished.mockRejectedValue(new Error('Connection refused'));
+
+      await expect(controller.listPublishedArticles(query)).rejects.toThrow('Connection refused');
     });
   });
 

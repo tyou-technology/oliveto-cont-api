@@ -106,13 +106,14 @@ describe('ArticlesController', () => {
   describe('listArticles()', () => {
     const query: ArticleQueryDto = { page: 1, limit: 10 };
 
-    it('should return a paginated list of articles', async () => {
+    it('should return a paginated list of articles with _links', async () => {
       mockArticlesService.list.mockResolvedValue(paginatedResult);
 
       const result = await controller.listArticles(query);
 
       expect(mockArticlesService.list).toHaveBeenCalledWith(query);
-      expect(result).toEqual(paginatedResult);
+      expect(result).toMatchObject(paginatedResult);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should pass the full query object including status filter to the service', async () => {
@@ -160,7 +161,7 @@ describe('ArticlesController', () => {
   // ── GET /articles/slug/:slug ─────────────────────────────────────────────────
 
   describe('findBySlug()', () => {
-    it('should return the article that matches the slug', async () => {
+    it('should return the article that matches the slug with _links', async () => {
       mockArticlesService.findBySlug.mockResolvedValue(publishedArticle);
 
       const result = await controller.findBySlug('declaracao-de-imposto-de-renda');
@@ -168,7 +169,9 @@ describe('ArticlesController', () => {
       expect(mockArticlesService.findBySlug).toHaveBeenCalledWith(
         'declaracao-de-imposto-de-renda',
       );
-      expect(result).toEqual(publishedArticle);
+      expect(result.data).toEqual(publishedArticle);
+      expect(result._links.self).toBeDefined();
+      expect(result._links.collection).toBeDefined();
     });
 
     it('should throw NotFoundException when the slug does not match any article', async () => {
@@ -182,10 +185,10 @@ describe('ArticlesController', () => {
 
       const result = await controller.findBySlug('declaracao-de-imposto-de-renda');
 
-      expect(result.articleTags).toEqual([mockTag2]);
-      expect(result.articleTags[0]).toHaveProperty('name');
-      expect(result.articleTags[0]).toHaveProperty('color');
-      expect(result.articleTags[0]).toHaveProperty('icon');
+      expect(result.data.articleTags).toEqual([mockTag2]);
+      expect(result.data.articleTags[0]).toHaveProperty('name');
+      expect(result.data.articleTags[0]).toHaveProperty('color');
+      expect(result.data.articleTags[0]).toHaveProperty('icon');
     });
 
     it('should return readingTime and visitsCount in the response', async () => {
@@ -193,8 +196,8 @@ describe('ArticlesController', () => {
 
       const result = await controller.findBySlug('declaracao-de-imposto-de-renda');
 
-      expect(result.readingTime).toBe(8);
-      expect(result.visitsCount).toBe(142);
+      expect(result.data.readingTime).toBe(8);
+      expect(result.data.visitsCount).toBe(142);
     });
   });
 
@@ -209,13 +212,15 @@ describe('ArticlesController', () => {
       tagIds: [mockTag.id],
     };
 
-    it('should create an article and return it', async () => {
+    it('should create an article and return it with _links', async () => {
       mockArticlesService.create.mockResolvedValue(mockArticle);
 
       const result = await controller.createArticle(createDto, mockCurrentUser as any);
 
       expect(mockArticlesService.create).toHaveBeenCalledWith(createDto, mockCurrentUser.id);
-      expect(result).toEqual(mockArticle);
+      expect(result.data).toEqual(mockArticle);
+      expect(result._links.self).toBeDefined();
+      expect(result._links.collection).toBeDefined();
     });
 
     it('should pass the current user id as the authorId to the service', async () => {
@@ -232,7 +237,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.createArticle(createDto, mockCurrentUser as any);
 
-      expect(result.articleTags).toEqual([mockTag]);
+      expect(result.data.articleTags).toEqual([mockTag]);
     });
 
     it('should return an empty articleTags array when no tagIds are provided', async () => {
@@ -245,7 +250,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.createArticle(dtoWithoutTags, mockCurrentUser as any);
 
-      expect(result.articleTags).toEqual([]);
+      expect(result.data.articleTags).toEqual([]);
     });
 
     it('should return visitsCount as 0 on a freshly created article', async () => {
@@ -253,7 +258,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.createArticle(createDto, mockCurrentUser as any);
 
-      expect(result.visitsCount).toBe(0);
+      expect(result.data.visitsCount).toBe(0);
     });
 
     it('should propagate service errors', async () => {
@@ -270,14 +275,15 @@ describe('ArticlesController', () => {
   describe('updateArticle()', () => {
     const updateDto: UpdateArticleDto = { title: 'Título Atualizado' };
 
-    it('should update and return the article', async () => {
+    it('should update and return the article with _links', async () => {
       const updated = { ...mockArticle, title: 'Título Atualizado' };
       mockArticlesService.update.mockResolvedValue(updated);
 
       const result = await controller.updateArticle('article_cuid_1', updateDto);
 
       expect(mockArticlesService.update).toHaveBeenCalledWith('article_cuid_1', updateDto);
-      expect(result.title).toBe('Título Atualizado');
+      expect(result.data.title).toBe('Título Atualizado');
+      expect(result._links.self).toBeDefined();
     });
 
     it('should update the briefing field', async () => {
@@ -286,7 +292,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.updateArticle('article_cuid_1', briefingDto);
 
-      expect(result.briefing).toBe('Resumo atualizado.');
+      expect(result.data.briefing).toBe('Resumo atualizado.');
     });
 
     it('should update the readingTime field', async () => {
@@ -295,7 +301,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.updateArticle('article_cuid_1', timeDto);
 
-      expect(result.readingTime).toBe(15);
+      expect(result.data.readingTime).toBe(15);
     });
 
     it('should update articleTags when tagIds are provided', async () => {
@@ -305,7 +311,7 @@ describe('ArticlesController', () => {
       const result = await controller.updateArticle('article_cuid_1', tagUpdateDto);
 
       expect(mockArticlesService.update).toHaveBeenCalledWith('article_cuid_1', tagUpdateDto);
-      expect(result.articleTags).toEqual([mockTag2]);
+      expect(result.data.articleTags).toEqual([mockTag2]);
     });
 
     it('should allow clearing all articleTags by passing an empty tagIds array', async () => {
@@ -314,7 +320,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.updateArticle('article_cuid_1', clearTagsDto);
 
-      expect(result.articleTags).toEqual([]);
+      expect(result.data.articleTags).toEqual([]);
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {
@@ -329,13 +335,13 @@ describe('ArticlesController', () => {
   // ── DELETE /articles/:id ────────────────────────────────────────────────────
 
   describe('deleteArticle()', () => {
-    it('should delete the article and return the deleted record', async () => {
-      mockArticlesService.delete.mockResolvedValue(mockArticle);
+    it('should delete the article and return no content (204)', async () => {
+      mockArticlesService.delete.mockResolvedValue(undefined);
 
       const result = await controller.deleteArticle('article_cuid_1');
 
       expect(mockArticlesService.delete).toHaveBeenCalledWith('article_cuid_1');
-      expect(result).toEqual(mockArticle);
+      expect(result).toBeUndefined();
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {
@@ -354,7 +360,7 @@ describe('ArticlesController', () => {
   // ── PATCH /articles/:id/publish ─────────────────────────────────────────────
 
   describe('publishArticle()', () => {
-    it('should publish the article and return it with PUBLISHED status', async () => {
+    it('should publish the article and return it with PUBLISHED status and _links', async () => {
       const published = {
         ...mockArticle,
         status: ArticleStatus.PUBLISHED,
@@ -365,7 +371,8 @@ describe('ArticlesController', () => {
       const result = await controller.publishArticle('article_cuid_1');
 
       expect(mockArticlesService.publish).toHaveBeenCalledWith('article_cuid_1');
-      expect(result.status).toBe(ArticleStatus.PUBLISHED);
+      expect(result.data.status).toBe(ArticleStatus.PUBLISHED);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should set publishedAt to a date on publish', async () => {
@@ -378,7 +385,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.publishArticle('article_cuid_1');
 
-      expect(result.publishedAt).toBeInstanceOf(Date);
+      expect(result.data.publishedAt).toBeInstanceOf(Date);
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {
@@ -397,14 +404,15 @@ describe('ArticlesController', () => {
   // ── PATCH /articles/:id/archive ─────────────────────────────────────────────
 
   describe('archiveArticle()', () => {
-    it('should archive the article and return it with ARCHIVED status', async () => {
+    it('should archive the article and return it with ARCHIVED status and _links', async () => {
       const archived = { ...publishedArticle, status: ArticleStatus.ARCHIVED };
       mockArticlesService.archive.mockResolvedValue(archived);
 
       const result = await controller.archiveArticle('article_cuid_2');
 
       expect(mockArticlesService.archive).toHaveBeenCalledWith('article_cuid_2');
-      expect(result.status).toBe(ArticleStatus.ARCHIVED);
+      expect(result.data.status).toBe(ArticleStatus.ARCHIVED);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should preserve publishedAt when archiving a previously published article', async () => {
@@ -413,7 +421,7 @@ describe('ArticlesController', () => {
 
       const result = await controller.archiveArticle('article_cuid_2');
 
-      expect(result.publishedAt).toEqual(publishedArticle.publishedAt);
+      expect(result.data.publishedAt).toEqual(publishedArticle.publishedAt);
     });
 
     it('should throw NotFoundException when the article does not exist', async () => {

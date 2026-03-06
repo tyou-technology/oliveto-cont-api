@@ -23,7 +23,12 @@ import { Roles } from '@common/decorators/roles.decorator';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { PaginationQueryRequest } from '@common/dto/pagination.dto';
 import { Role } from '@common/types/enums';
-import { USER_ACTIONS, USER_ERROR_MESSAGES, USERS_ROUTES } from '@modules/users/constants/users.constants';
+import { JwtPayload } from '@common/types/jwt-payload.type';
+import {
+  USER_ACTIONS,
+  USER_ERROR_MESSAGES,
+  USERS_ROUTES,
+} from '@modules/users/constants/users.constants';
 import { enrichEvent } from '@common/utils/enrich-event.util';
 import { UpdateUserRequest, UpdateUserRoleRequest } from '@modules/users/dto/update-user.request';
 import { UserEntity } from '@modules/users/entity/user.entity';
@@ -40,7 +45,7 @@ export class UsersController {
   @ApiOkResponse({ type: UserEntity })
   @ApiNotFoundResponse({ description: 'User not found' })
   @Get(USERS_ROUTES.ME)
-  async getMe(@CurrentUser() currentUser: any, @Req() req?: Request) {
+  async getMe(@CurrentUser() currentUser: JwtPayload, @Req() req?: Request) {
     const user = await this.usersService.findById(currentUser.id);
 
     enrichEvent(req, {
@@ -51,14 +56,20 @@ export class UsersController {
       },
     });
 
-    return user;
+    return {
+      data: user,
+      _links: {
+        self: { href: '/users/me', method: 'GET' },
+        update: { href: '/users/me', method: 'PATCH' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiOkResponse({ type: UserEntity })
   @Patch(USERS_ROUTES.ME)
   async updateMe(
-    @CurrentUser() currentUser: any,
+    @CurrentUser() currentUser: JwtPayload,
     @Body() dto: UpdateUserRequest,
     @Req() req?: Request,
   ) {
@@ -77,7 +88,13 @@ export class UsersController {
       },
     });
 
-    return user;
+    return {
+      data: user,
+      _links: {
+        self: { href: '/users/me', method: 'GET' },
+        update: { href: '/users/me', method: 'PATCH' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'List all users (admin only)' })
@@ -96,7 +113,12 @@ export class UsersController {
       },
     });
 
-    return result;
+    return {
+      ...result,
+      _links: {
+        self: { href: '/users', method: 'GET' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Change a user role (admin only)' })
@@ -108,7 +130,7 @@ export class UsersController {
   async updateUserRole(
     @Param('id') id: string,
     @Body() dto: UpdateUserRoleRequest,
-    @CurrentUser() currentUser?: any,
+    @CurrentUser() currentUser?: JwtPayload,
     @Req() req?: Request,
   ) {
     if (currentUser?.id === id) {
@@ -126,6 +148,12 @@ export class UsersController {
       },
     });
 
-    return user;
+    return {
+      data: user,
+      _links: {
+        self: { href: `/users/${id}`, method: 'GET' },
+        collection: { href: '/users', method: 'GET' },
+      },
+    };
   }
 }

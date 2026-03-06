@@ -86,13 +86,17 @@ describe('LeadsController', () => {
       origin: LeadOrigin.CONTACT_FORM,
     };
 
-    it('should create and return the new lead', async () => {
+    it('should create and return the new lead with _links', async () => {
       mockLeadsService.create.mockResolvedValue(mockLead);
 
       const result = await controller.createLead(createDto);
 
       expect(mockLeadsService.create).toHaveBeenCalledWith(createDto);
-      expect(result).toEqual(mockLead);
+      expect(result.data).toEqual(mockLead);
+      expect(result._links.self).toBeDefined();
+      expect(result._links.status).toBeDefined();
+      expect(result._links.notes).toBeDefined();
+      expect(result._links.read).toBeDefined();
     });
 
     it('should create a lead with only required fields when optional fields are omitted', async () => {
@@ -112,7 +116,7 @@ describe('LeadsController', () => {
       const result = await controller.createLead(minimalDto);
 
       expect(mockLeadsService.create).toHaveBeenCalledWith(minimalDto);
-      expect(result.phone).toBeNull();
+      expect(result.data.phone).toBeNull();
     });
 
     it('should return the lead with isRead false and status NEW', async () => {
@@ -120,8 +124,8 @@ describe('LeadsController', () => {
 
       const result = await controller.createLead(createDto);
 
-      expect(result.isRead).toBe(false);
-      expect(result.status).toBe(LeadStatus.NEW);
+      expect(result.data.isRead).toBe(false);
+      expect(result.data.status).toBe(LeadStatus.NEW);
     });
 
     it('should propagate service errors', async () => {
@@ -136,13 +140,14 @@ describe('LeadsController', () => {
   describe('listLeads()', () => {
     const query: LeadQueryDto = { page: 1, limit: 10 };
 
-    it('should return a paginated list of leads', async () => {
+    it('should return a paginated list of leads with _links', async () => {
       mockLeadsService.list.mockResolvedValue(paginatedResult);
 
       const result = await controller.listLeads(query);
 
       expect(mockLeadsService.list).toHaveBeenCalledWith(query);
-      expect(result).toEqual(paginatedResult);
+      expect(result).toMatchObject(paginatedResult);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should pass status filter to the service', async () => {
@@ -190,13 +195,16 @@ describe('LeadsController', () => {
   // ── GET /leads/:id ──────────────────────────────────────────────────────────
 
   describe('findLead()', () => {
-    it('should return the lead when the id exists', async () => {
+    it('should return the lead with _links when the id exists', async () => {
       mockLeadsService.findById.mockResolvedValue(mockLead);
 
       const result = await controller.findLead('lead_cuid_1');
 
       expect(mockLeadsService.findById).toHaveBeenCalledWith('lead_cuid_1');
-      expect(result).toEqual(mockLead);
+      expect(result.data).toEqual(mockLead);
+      expect(result._links.self).toBeDefined();
+      expect(result._links.status).toBeDefined();
+      expect(result._links.notes).toBeDefined();
     });
 
     it('should throw NotFoundException when the lead does not exist', async () => {
@@ -210,10 +218,10 @@ describe('LeadsController', () => {
 
       const result = await controller.findLead('lead_cuid_2');
 
-      expect(result).toHaveProperty('notes');
-      expect(result).toHaveProperty('origin');
-      expect(result).toHaveProperty('isRead');
-      expect(result).toHaveProperty('contactedAt');
+      expect(result.data).toHaveProperty('notes');
+      expect(result.data).toHaveProperty('origin');
+      expect(result.data).toHaveProperty('isRead');
+      expect(result.data).toHaveProperty('contactedAt');
     });
 
     it('should propagate service errors', async () => {
@@ -228,14 +236,15 @@ describe('LeadsController', () => {
   describe('updateLeadStatus()', () => {
     const statusDto: UpdateLeadStatusDto = { status: LeadStatus.CONTACTED };
 
-    it('should update the lead status and return the updated record', async () => {
+    it('should update the lead status and return the updated record with _links', async () => {
       const updated = { ...mockLead, status: LeadStatus.CONTACTED, contactedAt: new Date() };
       mockLeadsService.updateStatus.mockResolvedValue(updated);
 
       const result = await controller.updateLeadStatus('lead_cuid_1', statusDto);
 
       expect(mockLeadsService.updateStatus).toHaveBeenCalledWith('lead_cuid_1', statusDto);
-      expect(result.status).toBe(LeadStatus.CONTACTED);
+      expect(result.data.status).toBe(LeadStatus.CONTACTED);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should reflect contactedAt in the response when transitioning to CONTACTED', async () => {
@@ -244,7 +253,7 @@ describe('LeadsController', () => {
 
       const result = await controller.updateLeadStatus('lead_cuid_1', statusDto);
 
-      expect(result.contactedAt).toBeInstanceOf(Date);
+      expect(result.data.contactedAt).toBeInstanceOf(Date);
     });
 
     it('should update to QUALIFIED status', async () => {
@@ -253,7 +262,7 @@ describe('LeadsController', () => {
 
       const result = await controller.updateLeadStatus('lead_cuid_2', dto);
 
-      expect(result.status).toBe(LeadStatus.QUALIFIED);
+      expect(result.data.status).toBe(LeadStatus.QUALIFIED);
     });
 
     it('should update to CONVERTED status', async () => {
@@ -262,7 +271,7 @@ describe('LeadsController', () => {
 
       const result = await controller.updateLeadStatus('lead_cuid_2', dto);
 
-      expect(result.status).toBe(LeadStatus.CONVERTED);
+      expect(result.data.status).toBe(LeadStatus.CONVERTED);
     });
 
     it('should update to LOST status', async () => {
@@ -271,7 +280,7 @@ describe('LeadsController', () => {
 
       const result = await controller.updateLeadStatus('lead_cuid_1', dto);
 
-      expect(result.status).toBe(LeadStatus.LOST);
+      expect(result.data.status).toBe(LeadStatus.LOST);
     });
 
     it('should throw NotFoundException when the lead does not exist', async () => {
@@ -296,14 +305,15 @@ describe('LeadsController', () => {
   describe('updateLeadNotes()', () => {
     const notesDto: UpdateLeadNotesDto = { notes: 'Ligou no dia 12/01. Reunião agendada.' };
 
-    it('should set notes on the lead and return the updated record', async () => {
+    it('should set notes on the lead and return the updated record with _links', async () => {
       const updated = { ...mockLead, notes: notesDto.notes };
       mockLeadsService.addNotes.mockResolvedValue(updated);
 
       const result = await controller.updateLeadNotes('lead_cuid_1', notesDto);
 
       expect(mockLeadsService.addNotes).toHaveBeenCalledWith('lead_cuid_1', notesDto);
-      expect(result.notes).toBe('Ligou no dia 12/01. Reunião agendada.');
+      expect(result.data.notes).toBe('Ligou no dia 12/01. Reunião agendada.');
+      expect(result._links.self).toBeDefined();
     });
 
     it('should allow overwriting existing notes with new content', async () => {
@@ -312,7 +322,7 @@ describe('LeadsController', () => {
 
       const result = await controller.updateLeadNotes('lead_cuid_2', newNotesDto);
 
-      expect(result.notes).toBe('Nota atualizada em 20/01.');
+      expect(result.data.notes).toBe('Nota atualizada em 20/01.');
     });
 
     it('should throw NotFoundException when the lead does not exist', async () => {
@@ -335,14 +345,15 @@ describe('LeadsController', () => {
   // ── PATCH /leads/:id/read ────────────────────────────────────────────────────
 
   describe('markLeadAsRead()', () => {
-    it('should mark the lead as read and return the updated record', async () => {
+    it('should mark the lead as read and return the updated record with _links', async () => {
       const updated = { ...mockLead, isRead: true };
       mockLeadsService.markAsRead.mockResolvedValue(updated);
 
       const result = await controller.markLeadAsRead('lead_cuid_1');
 
       expect(mockLeadsService.markAsRead).toHaveBeenCalledWith('lead_cuid_1');
-      expect(result.isRead).toBe(true);
+      expect(result.data.isRead).toBe(true);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should be idempotent — calling on an already-read lead returns it unchanged', async () => {
@@ -350,7 +361,7 @@ describe('LeadsController', () => {
 
       const result = await controller.markLeadAsRead('lead_cuid_2');
 
-      expect(result.isRead).toBe(true);
+      expect(result.data.isRead).toBe(true);
     });
 
     it('should throw NotFoundException when the lead does not exist', async () => {

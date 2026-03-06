@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -20,6 +22,7 @@ import {
 import { Public } from '@common/decorators/public.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { Roles } from '@common/decorators/roles.decorator';
+import { JwtPayload } from '@common/types/jwt-payload.type';
 import { ARTICLES_ROUTES } from '@modules/articles/constants/articles.constants';
 import { Role } from '@common/types/enums';
 import { ArticlesService } from '@modules/articles/service/articles.service';
@@ -36,8 +39,12 @@ export class ArticlesController {
   @ApiOkResponse({ description: 'Paginated article list' })
   @Public()
   @Get()
-  listArticles(@Query() query: ArticleQueryDto) {
-    return this.articlesService.list(query);
+  async listArticles(@Query() query: ArticleQueryDto) {
+    const result = await this.articlesService.list(query);
+    return {
+      ...result,
+      _links: { self: { href: '/articles' } },
+    };
   }
 
   @ApiOperation({ summary: 'Get article by slug (public)' })
@@ -45,17 +52,31 @@ export class ArticlesController {
   @ApiNotFoundResponse({ description: 'Article not found' })
   @Public()
   @Get(ARTICLES_ROUTES.SLUG)
-  findBySlug(@Param('slug') slug: string) {
-    return this.articlesService.findBySlug(slug);
+  async findBySlug(@Param('slug') slug: string) {
+    const article = await this.articlesService.findBySlug(slug);
+    return {
+      data: article,
+      _links: {
+        self: { href: `/articles/slug/${slug}` },
+        collection: { href: '/articles' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Create a new article (Editor+)' })
-  @ApiOkResponse({ description: 'Article created' })
+  @ApiCreatedResponse({ description: 'Article created' })
   @ApiBearerAuth()
   @Roles(Role.EDITOR, Role.ADMIN)
   @Post()
-  createArticle(@Body() dto: CreateArticleDto, @CurrentUser() currentUser: any) {
-    return this.articlesService.create(dto, currentUser.id);
+  async createArticle(@Body() dto: CreateArticleDto, @CurrentUser() currentUser: JwtPayload) {
+    const article = await this.articlesService.create(dto, currentUser.id);
+    return {
+      data: article,
+      _links: {
+        self: { href: `/articles/slug/${article.slug}` },
+        collection: { href: '/articles' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Update an article (Editor+)' })
@@ -64,18 +85,26 @@ export class ArticlesController {
   @ApiBearerAuth()
   @Roles(Role.EDITOR, Role.ADMIN)
   @Patch(ARTICLES_ROUTES.BY_ID)
-  updateArticle(@Param('id') id: string, @Body() dto: UpdateArticleDto) {
-    return this.articlesService.update(id, dto);
+  async updateArticle(@Param('id') id: string, @Body() dto: UpdateArticleDto) {
+    const article = await this.articlesService.update(id, dto);
+    return {
+      data: article,
+      _links: {
+        self: { href: `/articles/slug/${article.slug}` },
+        collection: { href: '/articles' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Delete an article (Admin only)' })
-  @ApiOkResponse({ description: 'Article deleted' })
+  @ApiNoContentResponse({ description: 'Article deleted' })
   @ApiNotFoundResponse({ description: 'Article not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(ARTICLES_ROUTES.BY_ID)
-  deleteArticle(@Param('id') id: string) {
-    return this.articlesService.delete(id);
+  async deleteArticle(@Param('id') id: string): Promise<void> {
+    await this.articlesService.delete(id);
   }
 
   @ApiOperation({ summary: 'Publish an article (Editor+)' })
@@ -85,8 +114,15 @@ export class ArticlesController {
   @Roles(Role.EDITOR, Role.ADMIN)
   @HttpCode(HttpStatus.OK)
   @Patch(ARTICLES_ROUTES.PUBLISH)
-  publishArticle(@Param('id') id: string) {
-    return this.articlesService.publish(id);
+  async publishArticle(@Param('id') id: string) {
+    const article = await this.articlesService.publish(id);
+    return {
+      data: article,
+      _links: {
+        self: { href: `/articles/slug/${article.slug}` },
+        collection: { href: '/articles' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Archive an article (Editor+)' })
@@ -96,7 +132,14 @@ export class ArticlesController {
   @Roles(Role.EDITOR, Role.ADMIN)
   @HttpCode(HttpStatus.OK)
   @Patch(ARTICLES_ROUTES.ARCHIVE)
-  archiveArticle(@Param('id') id: string) {
-    return this.articlesService.archive(id);
+  async archiveArticle(@Param('id') id: string) {
+    const article = await this.articlesService.archive(id);
+    return {
+      data: article,
+      _links: {
+        self: { href: `/articles/slug/${article.slug}` },
+        collection: { href: '/articles' },
+      },
+    };
   }
 }

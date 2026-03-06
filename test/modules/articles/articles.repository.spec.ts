@@ -266,7 +266,7 @@ describe('ArticlesRepository', () => {
   // ── delete ──────────────────────────────────────────────────────────────────
 
   describe('delete()', () => {
-    it('should delete and return the deleted article', async () => {
+    it('should call prisma.article.delete with correct where clause', async () => {
       mockPrisma.article.delete.mockResolvedValue(mockArticle);
 
       const result = await repository.delete('article_cuid_1');
@@ -274,7 +274,7 @@ describe('ArticlesRepository', () => {
       expect(mockPrisma.article.delete).toHaveBeenCalledWith(
         expect.objectContaining({ where: { id: 'article_cuid_1' } }),
       );
-      expect(result).toEqual(mockArticle);
+      expect(result).toBeUndefined();
     });
 
     it('should throw NotFoundException on P2025', async () => {

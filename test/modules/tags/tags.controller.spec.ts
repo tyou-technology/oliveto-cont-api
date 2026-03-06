@@ -53,21 +53,22 @@ describe('TagsController', () => {
   // ── GET /tags ───────────────────────────────────────────────────────────────
 
   describe('listTags()', () => {
-    it('should return all tags', async () => {
+    it('should return all tags with _links', async () => {
       mockTagsService.findAll.mockResolvedValue([mockTag, mockTag2]);
 
       const result = await controller.listTags();
 
       expect(mockTagsService.findAll).toHaveBeenCalledTimes(1);
-      expect(result).toEqual([mockTag, mockTag2]);
+      expect(result.data).toEqual([mockTag, mockTag2]);
+      expect(result._links.self).toBeDefined();
     });
 
-    it('should return an empty array when no tags exist', async () => {
+    it('should return an empty data array when no tags exist', async () => {
       mockTagsService.findAll.mockResolvedValue([]);
 
       const result = await controller.listTags();
 
-      expect(result).toEqual([]);
+      expect(result.data).toEqual([]);
     });
 
     it('should return the complete tag shape including name, description, color, and icon', async () => {
@@ -75,7 +76,7 @@ describe('TagsController', () => {
 
       const result = await controller.listTags();
 
-      const tag = result[0];
+      const tag = result.data[0];
       expect(tag).toHaveProperty('id');
       expect(tag).toHaveProperty('name');
       expect(tag).toHaveProperty('description');
@@ -93,13 +94,15 @@ describe('TagsController', () => {
   // ── GET /tags/:id ───────────────────────────────────────────────────────────
 
   describe('findTag()', () => {
-    it('should return the tag when the id exists', async () => {
+    it('should return the tag with _links when the id exists', async () => {
       mockTagsService.findById.mockResolvedValue(mockTag);
 
       const result = await controller.findTag('tag_cuid_1');
 
       expect(mockTagsService.findById).toHaveBeenCalledWith('tag_cuid_1');
-      expect(result).toEqual(mockTag);
+      expect(result.data).toEqual(mockTag);
+      expect(result._links.self).toBeDefined();
+      expect(result._links.collection).toBeDefined();
     });
 
     it('should throw NotFoundException when the tag does not exist', async () => {
@@ -125,13 +128,15 @@ describe('TagsController', () => {
       icon: 'calculator',
     };
 
-    it('should create and return the new tag', async () => {
+    it('should create and return the new tag with _links', async () => {
       mockTagsService.create.mockResolvedValue(mockTag);
 
       const result = await controller.createTag(createDto);
 
       expect(mockTagsService.create).toHaveBeenCalledWith(createDto);
-      expect(result).toEqual(mockTag);
+      expect(result.data).toEqual(mockTag);
+      expect(result._links.self).toBeDefined();
+      expect(result._links.collection).toBeDefined();
     });
 
     it('should create a tag with only name when optional fields are omitted', async () => {
@@ -142,7 +147,7 @@ describe('TagsController', () => {
       const result = await controller.createTag(minimalDto);
 
       expect(mockTagsService.create).toHaveBeenCalledWith(minimalDto);
-      expect(result.name).toBe('tributacao');
+      expect(result.data.name).toBe('tributacao');
     });
 
     it('should throw ConflictException when the tag name is already taken', async () => {
@@ -161,7 +166,7 @@ describe('TagsController', () => {
   // ── PATCH /tags/:id ─────────────────────────────────────────────────────────
 
   describe('updateTag()', () => {
-    it('should update and return the tag with the changed name', async () => {
+    it('should update and return the tag with the changed name and _links', async () => {
       const dto: UpdateTagDto = { name: 'contabilidade-avancada' };
       const updated = { ...mockTag, name: 'contabilidade-avancada' };
       mockTagsService.update.mockResolvedValue(updated);
@@ -169,7 +174,8 @@ describe('TagsController', () => {
       const result = await controller.updateTag('tag_cuid_1', dto);
 
       expect(mockTagsService.update).toHaveBeenCalledWith('tag_cuid_1', dto);
-      expect(result.name).toBe('contabilidade-avancada');
+      expect(result.data.name).toBe('contabilidade-avancada');
+      expect(result._links.self).toBeDefined();
     });
 
     it('should update the description field', async () => {
@@ -178,7 +184,7 @@ describe('TagsController', () => {
 
       const result = await controller.updateTag('tag_cuid_1', dto);
 
-      expect(result.description).toBe('Descrição revisada.');
+      expect(result.data.description).toBe('Descrição revisada.');
     });
 
     it('should update the color field', async () => {
@@ -187,7 +193,7 @@ describe('TagsController', () => {
 
       const result = await controller.updateTag('tag_cuid_1', dto);
 
-      expect(result.color).toBe('#2196F3');
+      expect(result.data.color).toBe('#2196F3');
     });
 
     it('should update the icon field', async () => {
@@ -196,7 +202,7 @@ describe('TagsController', () => {
 
       const result = await controller.updateTag('tag_cuid_1', dto);
 
-      expect(result.icon).toBe('chart-bar');
+      expect(result.data.icon).toBe('chart-bar');
     });
 
     it('should throw NotFoundException when the tag does not exist', async () => {
@@ -227,13 +233,13 @@ describe('TagsController', () => {
   // ── DELETE /tags/:id ────────────────────────────────────────────────────────
 
   describe('deleteTag()', () => {
-    it('should delete the tag and return the deleted record', async () => {
-      mockTagsService.delete.mockResolvedValue(mockTag);
+    it('should delete the tag and return no content (204)', async () => {
+      mockTagsService.delete.mockResolvedValue(undefined);
 
       const result = await controller.deleteTag('tag_cuid_1');
 
       expect(mockTagsService.delete).toHaveBeenCalledWith('tag_cuid_1');
-      expect(result).toEqual(mockTag);
+      expect(result).toBeUndefined();
     });
 
     it('should throw NotFoundException when the tag does not exist', async () => {

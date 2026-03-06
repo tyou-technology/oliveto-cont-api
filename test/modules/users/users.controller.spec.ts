@@ -45,13 +45,14 @@ describe('UsersController', () => {
   // ── GET /users/me ───────────────────────────────────────────────────────────
 
   describe('getMe()', () => {
-    it('should return the current authenticated user profile', async () => {
+    it('should return the current authenticated user profile with _links', async () => {
       mockUsersService.findById.mockResolvedValue(mockUser);
 
       const result = await controller.getMe(mockUser as any);
 
       expect(mockUsersService.findById).toHaveBeenCalledWith(mockUser.id);
-      expect(result).toEqual(mockUser);
+      expect(result.data).toEqual(mockUser);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should propagate NotFoundException if user no longer exists', async () => {
@@ -66,14 +67,15 @@ describe('UsersController', () => {
   describe('updateMe()', () => {
     const dto: UpdateUserRequest = { name: 'John Updated' };
 
-    it('should update and return the current user profile', async () => {
+    it('should update and return the current user profile with _links', async () => {
       const updated = { ...mockUser, name: 'John Updated' };
       mockUsersService.update.mockResolvedValue(updated);
 
       const result = await controller.updateMe(mockUser as any, dto);
 
       expect(mockUsersService.update).toHaveBeenCalledWith(mockUser.id, dto);
-      expect(result).toEqual(updated);
+      expect(result.data).toEqual(updated);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should only update the authenticated user own profile — not another user', async () => {
@@ -94,7 +96,7 @@ describe('UsersController', () => {
   describe('listUsers()', () => {
     const query: PaginationQueryRequest = { page: 1, limit: 10 };
 
-    it('should return a paginated list when called by an admin', async () => {
+    it('should return a paginated list with _links when called by an admin', async () => {
       const paginatedResult = {
         data: [mockUser, mockAdminUser],
         meta: { page: 1, limit: 10, total: 2, totalPages: 1 },
@@ -104,7 +106,8 @@ describe('UsersController', () => {
       const result = await controller.listUsers(query);
 
       expect(mockUsersService.list).toHaveBeenCalledWith(query);
-      expect(result).toEqual(paginatedResult);
+      expect(result).toMatchObject(paginatedResult);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should pass pagination query to the service', async () => {
@@ -122,14 +125,15 @@ describe('UsersController', () => {
   describe('updateUserRole()', () => {
     const dto: UpdateUserRoleRequest = { role: Role.EDITOR };
 
-    it('should update and return the user with the new role', async () => {
+    it('should update and return the user with the new role and _links', async () => {
       const updated = { ...mockUser, role: Role.EDITOR };
       mockUsersService.updateRole.mockResolvedValue(updated);
 
       const result = await controller.updateUserRole('cuid_1', dto);
 
       expect(mockUsersService.updateRole).toHaveBeenCalledWith('cuid_1', dto);
-      expect(result.role).toBe(Role.EDITOR);
+      expect(result.data.role).toBe(Role.EDITOR);
+      expect(result._links.self).toBeDefined();
     });
 
     it('should throw NotFoundException when the target user does not exist', async () => {

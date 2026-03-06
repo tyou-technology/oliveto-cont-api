@@ -133,11 +133,13 @@ describe('AuthController', () => {
   describe('logout()', () => {
     const logoutDto: RefreshTokenDto = { refreshToken: 'valid.refresh.token' };
 
-    it('should delegate to AuthService.logout and complete successfully', async () => {
+    it('should delegate to AuthService.logout and return no content (204)', async () => {
       mockAuthService.logout.mockResolvedValue(undefined);
 
-      await expect(controller.logout(logoutDto, mockCurrentUser as any)).resolves.not.toThrow();
+      const result = await controller.logout(logoutDto, mockCurrentUser as any);
+
       expect(mockAuthService.logout).toHaveBeenCalledWith(logoutDto);
+      expect(result).toBeUndefined();
     });
 
     it('should propagate UnauthorizedException for invalid refresh token', async () => {

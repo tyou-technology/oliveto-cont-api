@@ -8,7 +8,7 @@ import { WIDE_EVENT } from '@common/constants/wide-event.constants';
 export class WideEventInterceptor implements NestInterceptor {
   private readonly logger = new Logger(WIDE_EVENT.LOGGER_CONTEXT);
 
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();
     const startTime = Date.now();
 
@@ -30,14 +30,21 @@ export class WideEventInterceptor implements NestInterceptor {
         const res = context.switchToHttp().getResponse<Response>();
         this.emit(req, res.statusCode, startTime, 'success');
       }),
-      catchError((error) => {
-        this.emit(req, error.status || 500, startTime, 'error', error);
+      catchError((error: unknown) => {
+        const httpError = error as { status?: number; code?: string; name?: string; message?: string; constructor?: { name?: string } };
+        this.emit(req, httpError.status || 500, startTime, 'error', httpError);
         return throwError(() => error);
       }),
     );
   }
 
-  private emit(req: Request, statusCode: number, startTime: number, outcome: string, error?: any) {
+  private emit(
+    req: Request,
+    statusCode: number,
+    startTime: number,
+    outcome: string,
+    error?: { status?: number; code?: string; name?: string; message?: string; constructor?: { name?: string } },
+  ): void {
     const event = req['wideEvent'];
     event.status_code = statusCode;
     event.duration_ms = Date.now() - startTime;

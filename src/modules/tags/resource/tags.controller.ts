@@ -1,7 +1,9 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -24,8 +26,12 @@ export class TagsController {
   @ApiOkResponse({ description: 'Tag list' })
   @Public()
   @Get()
-  listTags() {
-    return this.tagsService.findAll();
+  async listTags() {
+    const tags = await this.tagsService.findAll();
+    return {
+      data: tags,
+      _links: { self: { href: '/tags' } },
+    };
   }
 
   @ApiOperation({ summary: 'Get tag by id (public)' })
@@ -33,18 +39,32 @@ export class TagsController {
   @ApiNotFoundResponse({ description: 'Tag not found' })
   @Public()
   @Get(TAGS_ROUTES.BY_ID)
-  findTag(@Param('id') id: string) {
-    return this.tagsService.findById(id);
+  async findTag(@Param('id') id: string) {
+    const tag = await this.tagsService.findById(id);
+    return {
+      data: tag,
+      _links: {
+        self: { href: `/tags/${id}` },
+        collection: { href: '/tags' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Create a new tag (Admin only)' })
-  @ApiOkResponse({ description: 'Tag created' })
+  @ApiCreatedResponse({ description: 'Tag created' })
   @ApiConflictResponse({ description: 'Tag name already exists' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Post()
-  createTag(@Body() dto: CreateTagDto) {
-    return this.tagsService.create(dto);
+  async createTag(@Body() dto: CreateTagDto) {
+    const tag = await this.tagsService.create(dto);
+    return {
+      data: tag,
+      _links: {
+        self: { href: `/tags/${tag.id}` },
+        collection: { href: '/tags' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Update a tag (Admin only)' })
@@ -54,17 +74,25 @@ export class TagsController {
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Patch(TAGS_ROUTES.BY_ID)
-  updateTag(@Param('id') id: string, @Body() dto: UpdateTagDto) {
-    return this.tagsService.update(id, dto);
+  async updateTag(@Param('id') id: string, @Body() dto: UpdateTagDto) {
+    const tag = await this.tagsService.update(id, dto);
+    return {
+      data: tag,
+      _links: {
+        self: { href: `/tags/${id}` },
+        collection: { href: '/tags' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Delete a tag (Admin only)' })
-  @ApiOkResponse({ description: 'Tag deleted' })
+  @ApiNoContentResponse({ description: 'Tag deleted' })
   @ApiNotFoundResponse({ description: 'Tag not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Delete(TAGS_ROUTES.BY_ID)
-  deleteTag(@Param('id') id: string) {
-    return this.tagsService.delete(id);
+  async deleteTag(@Param('id') id: string): Promise<void> {
+    await this.tagsService.delete(id);
   }
 }

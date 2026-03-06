@@ -38,8 +38,18 @@ export class LeadsController {
   @Public()
   @Post()
   @HttpCode(HttpStatus.CREATED)
-  createLead(@Body() dto: CreateLeadDto) {
-    return this.leadsService.create(dto);
+  async createLead(@Body() dto: CreateLeadDto) {
+    const lead = await this.leadsService.create(dto);
+    return {
+      data: lead,
+      _links: {
+        self: { href: `/leads/${lead.id}`, method: 'GET' },
+        collection: { href: '/leads', method: 'GET' },
+        status: { href: `/leads/${lead.id}/status`, method: 'PATCH' },
+        notes: { href: `/leads/${lead.id}/notes`, method: 'PATCH' },
+        read: { href: `/leads/${lead.id}/read`, method: 'PATCH' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'List all leads with optional filters (Admin only)' })
@@ -47,8 +57,14 @@ export class LeadsController {
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Get()
-  listLeads(@Query() query: LeadQueryDto) {
-    return this.leadsService.list(query);
+  async listLeads(@Query() query: LeadQueryDto) {
+    const result = await this.leadsService.list(query);
+    return {
+      ...result,
+      _links: {
+        self: { href: '/leads', method: 'GET' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Get lead detail by ID (Admin only)' })
@@ -57,8 +73,18 @@ export class LeadsController {
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Get(LEADS_ROUTES.BY_ID)
-  findLead(@Param('id') id: string) {
-    return this.leadsService.findById(id);
+  async findLead(@Param('id') id: string) {
+    const lead = await this.leadsService.findById(id);
+    return {
+      data: lead,
+      _links: {
+        self: { href: `/leads/${id}`, method: 'GET' },
+        collection: { href: '/leads', method: 'GET' },
+        status: { href: `/leads/${id}/status`, method: 'PATCH' },
+        notes: { href: `/leads/${id}/notes`, method: 'PATCH' },
+        read: { href: `/leads/${id}/read`, method: 'PATCH' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Update lead status (Admin only)' })
@@ -67,8 +93,15 @@ export class LeadsController {
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Patch(LEADS_ROUTES.STATUS)
-  updateLeadStatus(@Param('id') id: string, @Body() dto: UpdateLeadStatusDto) {
-    return this.leadsService.updateStatus(id, dto);
+  async updateLeadStatus(@Param('id') id: string, @Body() dto: UpdateLeadStatusDto) {
+    const lead = await this.leadsService.updateStatus(id, dto);
+    return {
+      data: lead,
+      _links: {
+        self: { href: `/leads/${id}`, method: 'GET' },
+        collection: { href: '/leads', method: 'GET' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Add or update internal notes on a lead (Admin only)' })
@@ -77,8 +110,15 @@ export class LeadsController {
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Patch(LEADS_ROUTES.NOTES)
-  updateLeadNotes(@Param('id') id: string, @Body() dto: UpdateLeadNotesDto) {
-    return this.leadsService.addNotes(id, dto);
+  async updateLeadNotes(@Param('id') id: string, @Body() dto: UpdateLeadNotesDto) {
+    const lead = await this.leadsService.addNotes(id, dto);
+    return {
+      data: lead,
+      _links: {
+        self: { href: `/leads/${id}`, method: 'GET' },
+        collection: { href: '/leads', method: 'GET' },
+      },
+    };
   }
 
   @ApiOperation({ summary: 'Mark a lead as read (Admin only)' })
@@ -87,7 +127,14 @@ export class LeadsController {
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
   @Patch(LEADS_ROUTES.READ)
-  markLeadAsRead(@Param('id') id: string) {
-    return this.leadsService.markAsRead(id);
+  async markLeadAsRead(@Param('id') id: string) {
+    const lead = await this.leadsService.markAsRead(id);
+    return {
+      data: lead,
+      _links: {
+        self: { href: `/leads/${id}`, method: 'GET' },
+        collection: { href: '/leads', method: 'GET' },
+      },
+    };
   }
 }

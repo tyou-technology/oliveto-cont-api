@@ -1,6 +1,8 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -9,6 +11,7 @@ import {
 import { Request } from 'express';
 import { Public } from '@common/decorators/public.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
+import { JwtPayload } from '@common/types/jwt-payload.type';
 import { AUTH_ACTIONS, AUTH_ROUTES } from '@modules/auth/constants/auth.constants';
 import { enrichEvent } from '@common/utils/enrich-event.util';
 import { RegisterDto } from '@modules/auth/dto/register.dto';
@@ -22,7 +25,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiOkResponse({ description: 'Token pair issued' })
+  @ApiCreatedResponse({ description: 'Token pair issued' })
   @Public()
   @Post(AUTH_ROUTES.REGISTER)
   async register(@Body() dto: RegisterDto, @Req() req?: Request) {
@@ -62,16 +65,16 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Logout and invalidate refresh token' })
-  @ApiOkResponse({ description: 'Logged out successfully' })
+  @ApiNoContentResponse({ description: 'Logged out successfully' })
   @ApiUnauthorizedResponse({ description: 'Invalid refresh token' })
   @ApiBearerAuth()
-  @HttpCode(HttpStatus.OK)
+  @HttpCode(HttpStatus.NO_CONTENT)
   @Post(AUTH_ROUTES.LOGOUT)
   async logout(
     @Body() dto: RefreshTokenDto,
-    @CurrentUser() currentUser: any,
+    @CurrentUser() currentUser: JwtPayload,
     @Req() req?: Request,
-  ) {
+  ): Promise<void> {
     await this.authService.logout(dto);
 
     enrichEvent(req, { auth: { action: AUTH_ACTIONS.LOGOUT, user_id: currentUser?.id } });

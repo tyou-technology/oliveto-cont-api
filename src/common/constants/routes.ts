@@ -24,4 +24,8 @@ export const ROUTES = {
     STATUS: ':id/status',
     NOTES: ':id/notes',
   },
+  TAGS: {
+    BASE: 'tags',
+    BY_ID: ':id',
+  },
 } as const;

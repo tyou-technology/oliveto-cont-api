@@ -4,6 +4,9 @@ export const ERROR_MESSAGES = {
   ADMIN_CANNOT_CHANGE_OWN_ROLE: 'Admins cannot change their own role',
   INVALID_CREDENTIALS: 'Invalid credentials',
   INVALID_REFRESH_TOKEN: 'Invalid refresh token',
+  ARTICLE_NOT_FOUND: 'Article not found',
+  TAG_NOT_FOUND: 'Tag not found',
+  TAG_NAME_ALREADY_EXISTS: 'Tag name already exists',
 } as const;
 
 export const DB_ERROR_MESSAGES = {

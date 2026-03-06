@@ -17,6 +17,7 @@ import {
   ApiOperation,
   ApiTags,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Public } from '@common/decorators/public.decorator';
 import { Roles } from '@common/decorators/roles.decorator';
 import { Role } from '@common/types/enums';
@@ -35,6 +36,7 @@ export class LeadsController {
 
   @ApiOperation({ summary: 'Submit a lead from the website contact form (public)' })
   @ApiCreatedResponse({ description: 'Lead captured', type: LeadEntity })
+  @Throttle({ strict: { ttl: 60000, limit: 10 } })
   @Public()
   @Post()
   @HttpCode(HttpStatus.CREATED)

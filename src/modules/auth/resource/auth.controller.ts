@@ -8,6 +8,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Public } from '@common/decorators/public.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
@@ -20,6 +21,7 @@ import { RefreshTokenDto } from '@modules/auth/dto/refresh-token.dto';
 import { AuthService } from '@modules/auth/service/auth.service';
 
 @ApiTags('auth')
+@Throttle({ strict: { ttl: 60000, limit: 10 } })
 @Controller(AUTH_ROUTES.BASE)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

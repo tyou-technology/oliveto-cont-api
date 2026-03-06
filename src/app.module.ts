@@ -41,8 +41,15 @@ import { UsersModule } from './modules/users/users.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => [
         {
-          ttl: config.get<number>('THROTTLE_TTL'),
-          limit: config.get<number>('THROTTLE_LIMIT'),
+          name: 'default',
+          ttl: config.get<number>('THROTTLE_TTL') ?? 60000,
+          limit: config.get<number>('THROTTLE_LIMIT') ?? 60,
+        },
+        {
+          // Strict limiter for sensitive public endpoints (auth + lead creation)
+          name: 'strict',
+          ttl: 60000,
+          limit: 10,
         },
       ],
     }),

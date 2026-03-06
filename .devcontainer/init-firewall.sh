@@ -60,7 +60,7 @@ while read -r cidr; do
         exit 1
     fi
     echo "Adding GitHub range $cidr"
-    ipset add -exist allowed-domains "$cidr"
+    ipset add -exist allowed-domains "$cidr"  # -exist: ignore duplicates
 done < <(echo "$gh_ranges" | jq -r '(.web + .api + .git)[]' | aggregate -q)
 
 # Resolve and add other allowed domains
@@ -72,7 +72,8 @@ for domain in \
     "statsig.com" \
     "marketplace.visualstudio.com" \
     "vscode.blob.core.windows.net" \
-    "update.code.visualstudio.com"; do
+    "update.code.visualstudio.com" \
+    "binaries.prisma.sh"; do
     echo "Resolving $domain..."
     ips=$(dig +noall +answer A "$domain" | awk '$4 == "A" {print $5}')
     if [ -z "$ips" ]; then
@@ -86,7 +87,7 @@ for domain in \
             exit 1
         fi
         echo "Adding $ip for $domain"
-        ipset add -exist allowed-domains "$ip"
+        ipset add -exist allowed-domains "$ip"  # -exist: ignore duplicates
     done < <(echo "$ips")
 done
 

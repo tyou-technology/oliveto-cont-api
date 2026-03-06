@@ -105,50 +105,42 @@ src/
 │       └── api-response.dto.ts            # Generic ApiResponseDto<T> for Swagger
 │
 ├── modules/
-│   ├── auth/
-│   │   ├── auth.module.ts
-│   │   ├── auth.controller.ts             # POST /auth/register, /login, /refresh, /logout
-│   │   ├── auth.service.ts                # Password hashing, JWT issue/verify, refresh logic
-│   │   ├── strategies/
-│   │   │   ├── jwt.strategy.ts            # Validates access token, injects user into request
-│   │   │   └── local.strategy.ts          # Validates email + password on login
-│   │   ├── guards/
-│   │   │   └── jwt-refresh.guard.ts       # Validates refresh token specifically
-│   │   └── dto/
-│   │       ├── login.dto.ts               # { email, password }
-│   │       ├── register.dto.ts            # { name, email, password }
-│   │       └── token-response.dto.ts      # { accessToken, refreshToken }
-│   │
-│   ├── users/
-│   │   ├── users.module.ts
-│   │   ├── users.controller.ts            # GET /users/me, PATCH /users/me, GET /users (admin)
-│   │   ├── users.service.ts               # findByEmail, findById, create, update, list
-│   │   └── dto/
-│   │       ├── create-user.dto.ts
-│   │       └── update-user.dto.ts
-│   │
-│   ├── articles/
-│   │   ├── articles.module.ts
-│   │   ├── articles.controller.ts         # Full CRUD + GET /articles/slug/:slug + PATCH publish
-│   │   ├── articles.service.ts            # CRUD, unique slug generation, status transitions
-│   │   └── dto/
-│   │       ├── create-article.dto.ts
-│   │       ├── update-article.dto.ts
-│   │       └── article-query.dto.ts       # Filters: status, tag, search, pagination
-│   │
-│   ├── leads/
-│   │   ├── leads.module.ts
-│   │   ├── leads.controller.ts            # POST /leads (public), GET/PATCH /leads (admin)
-│   │   ├── leads.service.ts               # Create, updateStatus, addNotes, list with filters
-│   │   └── dto/
-│   │       ├── create-lead.dto.ts
-│   │       ├── update-lead-status.dto.ts
-│   │       └── lead-query.dto.ts          # Filters: status, dateRange, pagination
-│   │
+│   ├── example/
+│   │   ├── example.module.ts
+│   │   ├── constants/
+│   │   │   └── example.constants.ts          # example: Role labels, default pagination, message keys, routes
+│   │   ├── dto/
+│   │   │   ├── create-example.request.ts     # example: { name, email, password, role? }
+│   │   │   ├── update-example.request.ts     # example: { name?, avatarUrl? }
+│   │   │   ├── example.response.ts           # example: Public example representation (no passwordHash)
+│   │   │   └── example-list-query.request.ts # example: Pagination + role filter
+│   │   ├── entity/
+│   │   │   └── example.entity.ts             # example — id, email, name, passwordHash, role
+│   │   ├── enum/
+│   │   │   └── role.enum.ts               # example: ADMIN, EDITOR, example
+│   │   ├── exception/
+│   │   │   ├── example-not-found.exception.ts
+│   │   │   └── email-already-exists.exception.ts
+│   │   ├── mapper/
+│   │   │   └── example.mapper.ts             # Entity → exampleResponse (strips sensitive fields)
+│   │   ├── repository/
+│   │   │   └── example.repository.ts         # example: findByEmail, findById, create, update, list
+│   │   ├── resource/
+│   │   │   └── example.controller.ts      # example: GET /example/list, PATCH /example, GET /example (admin)
+│   │   └── service/
+│   │       └── example.service.ts         # example: Profile updates, role changes, example lookup
+│   ├── .../
 │   ├── mail/
 │   │   ├── mail.module.ts
-│   │   ├── mail.service.ts               # sendNewLeadAlert(), sendWelcomeEmail()
-│   │   └── templates/                     # Email HTML templates (handlebars or string literals)
+│   │   ├── constants/
+│   │   │   └── mail.constants.ts          # Template names, subject line keys
+│   │   ├── dto/
+│   │   │   └── send-email.request.ts      # { to, subject, templateName, variables }
+│   │   ├── service/
+│   │   │   └── mail.service.ts            # sendNewLeadAlert(), sendWelcomeEmail()
+│   │   └── resource/
+│   │       └── client/
+│   │           └── resend.client.ts       # Resend SDK wrapper — send(), config
 │   │
 │   └── prisma/
 │       ├── prisma.module.ts               # Global module (exports PrismaService)
@@ -157,153 +149,7 @@ src/
 
 ---
 
-## Models (Prisma Schema)
-
-```prisma
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum Role {
-  ADMIN
-  EDITOR
-  USER
-}
-
-enum LeadStatus {
-  NEW
-  CONTACTED
-  QUALIFIED
-  CONVERTED
-  LOST
-}
-
-enum ArticleStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-}
-
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  passwordHash  String    @map("password_hash")
-  role          Role      @default(USER)
-  avatarUrl     String?   @map("avatar_url")
-  articles      Article[]
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  @@map("users")
-}
-
-model Article {
-  id              String        @id @default(cuid())
-  title           String
-  slug            String        @unique
-  excerpt         String?
-  content         String        @db.Text
-  coverUrl        String?       @map("cover_url")
-  status          ArticleStatus @default(DRAFT)
-  publishedAt     DateTime?     @map("published_at")
-  author          User          @relation(fields: [authorId], references: [id])
-  authorId        String        @map("author_id")
-  tags            String[]      @default([])
-  seoTitle        String?       @map("seo_title")
-  seoDescription  String?       @map("seo_description")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-
-  @@index([status, publishedAt])
-  @@index([slug])
-  @@map("articles")
-}
-
-model Lead {
-  id            String     @id @default(cuid())
-  name          String
-  email         String
-  phone         String?
-  company       String?
-  service       String?                            // e.g. "company_formation", "tax_filing"
-  message       String?    @db.Text
-  status        LeadStatus @default(NEW)
-  source        String?                            // "website", "google", "referral"
-  notes         String?    @db.Text                // Internal agent notes
-  contactedAt   DateTime?  @map("contacted_at")
-  createdAt     DateTime   @default(now()) @map("created_at")
-  updatedAt     DateTime   @updatedAt @map("updated_at")
-
-  @@index([status])
-  @@index([createdAt])
-  @@map("leads")
-}
-```
-
----
-
-## API Endpoints
-
-### Auth (`/auth`)
-
-| Method | Route            | Auth    | Description                            |
-| ------ | ---------------- | ------- | -------------------------------------- |
-| POST   | `/auth/register` | Public  | Create account, returns token pair     |
-| POST   | `/auth/login`    | Public  | Login with email + password            |
-| POST   | `/auth/refresh`  | Refresh | Renew access token using refresh token |
-| POST   | `/auth/logout`   | Bearer  | Blacklist refresh token                |
-
-### Users (`/users`)
-
-| Method | Route             | Auth   | Description                |
-| ------ | ----------------- | ------ | -------------------------- |
-| GET    | `/users/me`       | Bearer | Get current user profile   |
-| PATCH  | `/users/me`       | Bearer | Update own profile         |
-| GET    | `/users`          | Admin  | List all users (paginated) |
-| PATCH  | `/users/:id/role` | Admin  | Change a user's role       |
-
-### Articles (`/articles`)
-
-| Method | Route                   | Auth    | Description                         |
-| ------ | ----------------------- | ------- | ----------------------------------- |
-| GET    | `/articles`             | Public  | List published articles (paginated) |
-| GET    | `/articles/slug/:slug`  | Public  | Single article by slug              |
-| POST   | `/articles`             | Editor+ | Create article (defaults to DRAFT)  |
-| PATCH  | `/articles/:id`         | Editor+ | Update article                      |
-| DELETE | `/articles/:id`         | Admin   | Delete article                      |
-| PATCH  | `/articles/:id/publish` | Editor+ | Set status PUBLISHED + publishedAt  |
-| PATCH  | `/articles/:id/archive` | Editor+ | Set status ARCHIVED                 |
-
-### Leads (`/leads`)
-
-| Method | Route               | Auth   | Description                       |
-| ------ | ------------------- | ------ | --------------------------------- |
-| POST   | `/leads`            | Public | Capture lead from website form    |
-| GET    | `/leads`            | Admin  | List leads (filterable by status) |
-| GET    | `/leads/:id`        | Admin  | Lead detail                       |
-| PATCH  | `/leads/:id/status` | Admin  | Update lead status                |
-| PATCH  | `/leads/:id/notes`  | Admin  | Add internal notes                |
-
----
-
-## Services — Responsibilities
-
-| Module     | Service           | Key Methods                                                                                        |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------- |
-| `auth`     | `AuthService`     | `register()`, `login()`, `refresh()`, `logout()`, `hashPassword()`, `validateUser()`               |
-| `users`    | `UsersService`    | `findByEmail()`, `findById()`, `create()`, `update()`, `list()`                                    |
-| `articles` | `ArticlesService` | `create()`, `update()`, `findBySlug()`, `publish()`, `archive()`, `list()`, `generateUniqueSlug()` |
-| `leads`    | `LeadsService`    | `create()`, `updateStatus()`, `addNotes()`, `list()`, `findById()`                                 |
-| `mail`     | `MailService`     | `sendNewLeadAlert()`, `sendWelcomeEmail()`                                                         |
-| `prisma`   | `PrismaService`   | Extends `PrismaClient`, `onModuleInit()`, `onModuleDestroy()`                                      |
-
-### Service call graph
+### Service call graph example
 
 ```
 AuthController
@@ -509,9 +355,96 @@ npm run test:e2e      # E2E tests (test/**/*.e2e-spec.ts)
 
 ## Design Patterns
 
-### 1. Module Encapsulation
+### 0. No Literal Strings in Implementation Code
 
-Each feature is a self-contained NestJS module with its own controller, service, and DTOs. Modules declare explicit dependencies via `imports` and expose functionality via `exports`. No service reaches into another module's internals.
+All user-facing messages, error strings, Prisma error codes, log action names, and route paths must live in constants, never inline. This ensures consistent messages, makes refactoring safe, and prevents typos causing silent mismatches.
+
+```
+src/common/constants/
+├── error-messages.ts        # Human-facing exception messages
+├── prisma-error-codes.ts    # Prisma P-codes (P2002, P2025, P2003)
+├── routes.ts                # Route path segments for every controller
+└── wide-event.constants.ts  # Log action names, service name, logger context
+```
+
+```typescript
+// ✅ correct
+throw new NotFoundException(ERROR_MESSAGES.USER_NOT_FOUND);
+if (err?.code === PRISMA_ERROR_CODES.UNIQUE_CONSTRAINT) { ... }
+enrichEvent(req, { user: { action: USER_ACTIONS.PROFILE_UPDATE } });
+
+@Controller(ROUTES.USERS.BASE)
+...
+@Get(ROUTES.USERS.ME)
+...
+@Patch(ROUTES.USERS.ROLE)
+
+// ❌ wrong — never do this
+throw new NotFoundException('User not found');
+if (err?.code === 'P2002') { ... }
+enrichEvent(req, { user: { action: 'profile_update' } });
+
+@Controller('users')
+...
+@Get('me')
+...
+@Patch(':id/role')
+```
+
+Route constants live in `src/common/constants/routes.ts` and follow this shape:
+
+```typescript
+export const ROUTES = {
+  AUTH: {
+    BASE: 'auth',
+    LOGIN: 'login',
+    REGISTER: 'register',
+    REFRESH: 'refresh',
+    LOGOUT: 'logout',
+  },
+  USERS: {
+    BASE: 'users',
+    ME: 'me',
+    ROLE: ':id/role',
+  },
+  ARTICLES: {
+    BASE: 'articles',
+    SLUG: 'slug/:slug',
+    PUBLISH: ':id/publish',
+    ARCHIVE: ':id/archive',
+    BY_ID: ':id',
+  },
+  LEADS: {
+    BASE: 'leads',
+    BY_ID: ':id',
+    STATUS: ':id/status',
+    NOTES: ':id/notes',
+  },
+} as const;
+```
+
+### 1. Module Structure Convention
+
+Each feature is a self-contained NestJS module following a consistent internal layout. The folder structure enforces separation of concerns — no file lives outside its designated layer. Modules declare explicit dependencies via `imports` and expose functionality via `exports`. No service reaches into another module's internals.
+
+| Folder             | Purpose                                                                                      | Required |
+| ------------------ | -------------------------------------------------------------------------------------------- | -------- |
+| `constants/`       | Centralized constants and message keys (eg. ApiConstants, MessageConstants, RoutesConstants) | Yes      |
+| `dto/`             | Input/output contracts — **no DTO suffix**, use `Request` and `Response`                     | Yes      |
+| `entity/`          | Direct mapping to database tables (Prisma model mirrors). Only visible by Service and Repo   | Yes      |
+| `enum/`            | Fixed business domain enumerations                                                           | Optional |
+| `exception/`       | Custom domain exceptions                                                                     | Yes      |
+| `mapper/`          | Object conversion (prefer manual mapping over libraries)                                     | Yes      |
+| `modules/`         |                                                                                              | Yes      |
+| `repository/`      | Data access abstraction and queries                                                          | Yes      |
+| `resource/`        | REST controllers and contract validation                                                     | Yes      |
+| `resource/client/` | External service integration clients                                                         | Optional |
+| `resource/filter/` | HTTP request interceptors specific to this module                                            | Optional |
+| `service/`         | Core business rules and application logic                                                    | Yes      |
+| `utils/`           | Helper methods (last resort — prefer domain service, generic services or mapper)             | Optional |
+| `validation/`      | Aggregated validators and custom annotations                                                 | Optional |
+
+Each feature is a self-contained NestJS module with its own controller, service, and DTOs.
 
 ```typescript
 @Module({
@@ -528,7 +461,7 @@ export class LeadsModule {}
 Every request body and query param goes through a DTO with `class-validator` decorators. The global `ValidationPipe` rejects bad input before it reaches any service. This is the single point of input validation — services trust their inputs.
 
 ```typescript
-export class CreateLeadDto {
+export class CreateLeadRequest {
   @IsString()
   @IsNotEmpty()
   name: string;
@@ -569,11 +502,11 @@ Global `JwtAuthGuard` protects all routes by default. Public routes opt out with
 ```typescript
 @Public()
 @Post()
-createLead(@Body() dto: CreateLeadDto) { ... }
+createLead(@Body() dto: CreateLeadRequest) { ... }
 
 @Roles(Role.ADMIN)
 @Get()
-listLeads(@Query() query: LeadQueryDto) { ... }
+listLeads(@Query() query: LeadQueryRequest) { ... }
 ```
 
 ### 5. Prisma Exception Mapping
@@ -589,6 +522,104 @@ A global `PrismaExceptionFilter` catches Prisma-specific errors and maps them to
 ### 6. Config Module
 
 All configuration comes from env vars, accessed through NestJS `ConfigService`. No `process.env` calls scattered in the codebase — only `ConfigService.get()`. Validation at startup via `Joi` or `class-validator` schema to fail fast on missing vars.
+
+---
+
+### Software Engineering Best Practices
+
+**1. Meaningful Naming**
+Choose names that save reading time. Class, method, and variable names have an obligation to reveal their intent.
+
+- **Reveal intention:** The name must answer why the variable exists, what it does, and how it is used.
+- **Disallow disinformation:** Never use names that suggest something different from their real purpose (do not use `cooperativesList` if the type is not a list).
+- **Use pronounceable and searchable names:** Standardize names that make sense within the business context to facilitate communication and code navigation.
+- **Nouns and Verbs:** Name classes with nouns (e.g., `User`, `Lead`) and methods with verbs (e.g., `findUser`, `validatePassword`).
+
+**2. Small and Specialized Functions (SRP)**
+Strictly apply the Single Responsibility Principle (SRP). A function should do only one thing and do it well. Extensive methods are forbidden, as they hide bugs and prevent efficient unit testing.
+
+- **Size and indentation limits:** Keep functions short (maximum limit of 20 lines). Restrict indentation to a maximum of two levels (an `if` inside a `for` inside an `if` is forbidden).
+- **Standardize abstraction levels:** Keep all commands within a function at the same level of abstraction. Mixing high-level logic (e.g., `getUsersNames()`) with low-level logic (e.g., `string.append("-")`) is forbidden.
+- **Simplify blocks and indentation:** Reduce blocks inside `if`, `else`, and `while` statements to a single line, which must necessarily be a function call.
+
+**3. Function Arguments**
+Reduce the number of arguments to the absolute minimum. Complex signatures increase cognitive load and make unit testing painful. Respect the hierarchy of purity: ideal is zero (niladic), followed by one (monadic), and two (dyadic). Avoid triadic methods (3 arguments). More than three arguments is strictly forbidden.
+
+- **Create Input Objects:** When identifying a group of related data or a long list of parameters, you must encapsulate them into a single input data structure. This keeps the method interface stable even if new fields are added.
+- **Mandatory suffixes:** These objects must be named with suffixes like `Input` or `Request`. The use of the generic `DTO` suffix is forbidden.
+- **No Flag Arguments:** Passing booleans as arguments to alter the internal behavior of a function is forbidden. This proves the function is doing more than one thing and must be refactored into two distinct, semantic methods.
+
+**4. Self-Documenting Code & Comments**
+Do not try to compensate for bad code with comments. The code is the single source of truth; comments age, become liars, and are dangerous.
+
+- **Prioritize the code:** Refactor confusing code instead of explaining it.
+- **Restrict comments to intent:** Use comments exclusively to explain _why_ an atypical technical decision was made. Commenting on _what_ the code does is forbidden.
+
+**5. Avoid Utility Classes**
+The use of `Utils` classes with static methods is strongly discouraged. This practice incentivizes a procedural style, hinders maintenance, and makes clean unit testing via mocks impossible.
+
+- **Exhaust architectural possibilities:** Before creating a new utility class, you must exhaust all architectural possibilities. Check if the logic doesn't actually belong to a domain entity or a specialized service.
+- **Check standard libraries:** Before implementing utility logic, check if it doesn't already exist in established libraries available in the project. Do not reinvent the wheel; prefer community-tested solutions.
+- **Use managed services:** If creation is truly necessary, replace static methods with injectable components.
+
+**6. Constants and Magic Numbers**
+Using hardcoded literals (numbers or strings) in the middle of business logic is forbidden. Magic values make the code fragile and hard to interpret.
+
+- **Use constants:** Replace magic numbers, strings, and booleans with semantic constants.
+
+**7. Vertical Formatting and Affinity**
+Organize the code so that reading flows like a well-structured narrative.
+
+- **Vertical density:** Keep related lines of code close to each other. Lines representing distinct thoughts should be separated by a blank line.
+- **Vertical distance:** Declare variables as close as possible to where they will be used. Called functions should be placed immediately below the functions that call them (Step-down Rule).
+
+**8. Simplicity and Waste (KISS & YAGNI)**
+The design must focus on solving the current problem with the least possible complexity.
+
+- **KISS (Keep It Simple, Stupid):** Prioritize the most direct and readable solution. It is forbidden to create interfaces for classes that only have one planned implementation in the short term, or to apply complex design patterns to trivial logic.
+- **YAGNI (You Ain't Gonna Need It):** Implementing features, abstractions, or parameters "thinking about the future" is forbidden. Speculative code generates maintenance costs and unnecessary complexity.
+
+**9. Law of Demeter (Principle of Least Knowledge)**
+A module should not know the internal details of the objects it manipulates. An object should only talk to its close friends and never to strangers.
+
+- **Encapsulate behavior:** It is forbidden for a class to navigate through chains of third-party objects to perform an action. This generates fragile coupling where any change to the internal structure of a dependency breaks multiple modules.
+- **The Dot Rule:** Avoid multiple chained calls. If your code does `A.getB().getC().doSomething()`, you are violating the Law of Demeter.
+
+**10. Fail Fast**
+Validate all preconditions, parameters, and system states immediately at the beginning of execution. The code must fail as early as possible to avoid the unnecessary consumption of precious resources (like database connections, network calls, or CPU processing).
+
+- **Guard Clauses:** Use early returns to handle invalid scenarios immediately.
+- **Expressiveness:** Silent or generic returns that omit the cause of the error are forbidden. Throw specific business exceptions that describe exactly why it failed.
+
+**11. Tell, Don't Ask**
+Move decision-making logic to the objects that hold the data necessary to execute it. This principle is fundamental to avoiding Anemic Domain Models and ensuring a rich, cohesive domain.
+
+- **Rule Encapsulation:** It is forbidden for services to ask for an object's state to perform an external calculation or alteration. Instruct the object to perform the action. The logic must live where the data resides.
+- **Internal Validations:** If the properties to be validated belong to a domain entity, it is mandatory to perform the validation internally and expose only the resulting method.
+- **No getters for logic:** Avoid overusing getters. If you are extracting data from an object to validate something about it, that validation belongs inside the object itself.
+
+**12. Dependency Inversion & Injection (SOLID)**
+High-level modules should not depend on low-level modules; both should depend on abstractions.
+
+- **Invert the flow:** Business logic must not depend directly on database frameworks, external APIs, or UI components.
+- **Inject dependencies:** Hardcoding instantiation of services inside a class (using the `new` keyword for complex objects) is forbidden. Pass dependencies through the constructor to ensure components are easily mockable and interchangeable.
+
+**13. Boundary Isolation (Clean Architecture)**
+Keep a strict division between your core domain and external delivery mechanisms.
+
+- **Protect the Domain:** External frameworks, HTTP requests, and database entities must not leak into your core business logic.
+- **Map data at the edges:** Always map external payloads (like HTTP requests or database rows) into pure domain objects before passing them to your core services.
+
+**14. The Boy Scout Rule**
+Always leave the code better than you found it.
+
+- **Continuous Refactoring:** If you find bad formatting, poor naming, or outdated comments while implementing a new feature, you have an obligation to fix it. Do not wait for a dedicated "refactoring sprint."
+
+**15. Don't Repeat Yourself (DRY) vs. Accidental Duplication**
+Avoid duplicating business knowledge, but recognize when duplication is actually acceptable.
+
+- **True DRY:** Never copy and paste core business rules. Abstract them into a single, cohesive location.
+- **Tolerate Accidental Duplication:** If two pieces of code look identical right now but change for entirely different business reasons, forcing them into a shared abstraction is forbidden. Premature abstraction is worse than duplication.
 
 ---
 
@@ -608,80 +639,7 @@ This project follows the **wide event** philosophy (ref: [loggingsucks.com](http
 
 The logging interceptor wraps every request. It initializes the event with HTTP context, lets the route handler enrich it via `request.wideEvent`, and emits it in `finally`.
 
-```typescript
-// src/common/interceptors/wide-event.interceptor.ts
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
-import { Observable, tap, catchError, throwError } from 'rxjs';
-import { Request, Response } from 'express';
-import { randomUUID } from 'crypto';
-
-@Injectable()
-export class WideEventInterceptor implements NestInterceptor {
-  private readonly logger = new Logger('WideEvent');
-
-  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const req = context.switchToHttp().getRequest<Request>();
-    const startTime = Date.now();
-
-    // Initialize the wide event — attached to the request object
-    req['wideEvent'] = {
-      timestamp: new Date().toISOString(),
-      request_id: req.headers['x-request-id'] || randomUUID(),
-      service: 'accounting-api',
-      version: process.env.npm_package_version || '0.0.0',
-      node_env: process.env.NODE_ENV,
-
-      // HTTP context
-      method: req.method,
-      path: req.route?.path || req.path,
-      url: req.originalUrl,
-      ip: req.ip,
-      user_agent: req.headers['user-agent'],
-    };
-
-    return next.handle().pipe(
-      tap(() => {
-        const res = context.switchToHttp().getResponse<Response>();
-        this.emit(req, res.statusCode, startTime, 'success');
-      }),
-      catchError((error) => {
-        this.emit(req, error.status || 500, startTime, 'error', error);
-        return throwError(() => error);
-      }),
-    );
-  }
-
-  private emit(req: Request, statusCode: number, startTime: number, outcome: string, error?: any) {
-    const event = req['wideEvent'];
-    event.status_code = statusCode;
-    event.duration_ms = Date.now() - startTime;
-    event.outcome = outcome;
-
-    if (error) {
-      event.error = {
-        type: error.name || error.constructor?.name || 'UnknownError',
-        message: error.message,
-        code: error.code,
-      };
-    }
-
-    // Emit as structured JSON — one line, all context
-    if (statusCode >= 500) {
-      this.logger.error(JSON.stringify(event));
-    } else if (statusCode >= 400) {
-      this.logger.warn(JSON.stringify(event));
-    } else {
-      this.logger.log(JSON.stringify(event));
-    }
-  }
-}
-```
-
 Register globally in `main.ts`:
-
-```typescript
-app.useGlobalInterceptors(new WideEventInterceptor());
-```
 
 ### Enriching Events from Services
 
@@ -742,122 +700,9 @@ Wide event example — successful login:
 }
 ```
 
-#### Leads Module
-
-```typescript
-// leads.service.ts — inside create()
-enrichEvent(req, {
-  lead: {
-    id: lead.id,
-    service_interest: dto.service, // "company_formation", "tax_filing"
-    source: dto.source, // "website", "google", "referral"
-    has_phone: !!dto.phone,
-    has_company: !!dto.company,
-    message_length: dto.message?.length || 0,
-  },
-  mail: {
-    admin_alert_sent: true, // or false if fire-and-forget failed
-  },
-});
-```
-
-Wide event example — new lead captured:
-
-```json
-{
-  "timestamp": "2025-03-10T15:01:44.871Z",
-  "request_id": "req_2d4f6a8b",
-  "service": "accounting-api",
-  "method": "POST",
-  "path": "/leads",
-  "status_code": 201,
-  "duration_ms": 342,
-  "outcome": "success",
-  "ip": "201.45.67.89",
-  "lead": {
-    "id": "clx9def456",
-    "service_interest": "tax_filing",
-    "source": "google",
-    "has_phone": true,
-    "has_company": true,
-    "message_length": 240
-  },
-  "mail": {
-    "admin_alert_sent": true
-  }
-}
-```
-
-#### Articles Module
-
-```typescript
-// articles.service.ts — inside publish()
-enrichEvent(req, {
-  article: {
-    id: article.id,
-    slug: article.slug,
-    action: 'publish', // "create", "update", "publish", "archive", "delete"
-    status_from: 'DRAFT',
-    status_to: 'PUBLISHED',
-    tags: article.tags,
-    word_count: article.content.split(/\s+/).length,
-    has_cover: !!article.coverUrl,
-    has_seo: !!(article.seoTitle && article.seoDescription),
-  },
-  user: {
-    id: currentUser.id,
-    role: currentUser.role,
-  },
-});
-```
-
-#### Users Module
-
-```typescript
-// users.service.ts — inside update()
-enrichEvent(req, {
-  user: {
-    id: targetUser.id,
-    role: targetUser.role,
-    action: 'profile_update', // "profile_update", "role_change", "list"
-    fields_changed: ['name', 'avatarUrl'], // which fields were actually modified
-  },
-});
-```
-
 ### Database Query Context
 
 Add Prisma query timing to the wide event for slow query detection. Use a Prisma middleware:
-
-```typescript
-// src/modules/prisma/prisma.service.ts
-this.$use(async (params, next) => {
-  const start = Date.now();
-  const result = await next(params);
-  const duration = Date.now() - start;
-
-  // Store query stats — the interceptor will pick them up
-  if (!this.currentRequestEvent) return result;
-
-  if (!this.currentRequestEvent.db) {
-    this.currentRequestEvent.db = { query_count: 0, total_ms: 0, slowest_ms: 0 };
-  }
-  this.currentRequestEvent.db.query_count++;
-  this.currentRequestEvent.db.total_ms += duration;
-  if (duration > this.currentRequestEvent.db.slowest_ms) {
-    this.currentRequestEvent.db.slowest_ms = duration;
-    this.currentRequestEvent.db.slowest_model = params.model;
-    this.currentRequestEvent.db.slowest_action = params.action;
-  }
-
-  // Flag slow queries (> 500ms)
-  if (duration > 500) {
-    this.currentRequestEvent.db.slow_query_detected = true;
-  }
-
-  return result;
-});
-```
 
 This adds a `db` block to the wide event:
 
@@ -948,10 +793,16 @@ function shouldStore(event: Record<string, any>): boolean {
 }
 ```
 
+This is an excellent, highly prescriptive set of guidelines. The rigorous tone is perfect for establishing a strong engineering culture, whether you are setting the standard for your development team or structuring material for a technical syllabus.
+
+I have translated your list into professional software engineering English, refining a few redundant points (especially in item 11) for better flow. Below the translation, I’ve also included a few new topics that perfectly complement this approach, particularly if you are leaning into Clean Architecture and robust system design.
+
+---
+
 ### Rules
 
 1. **Never `console.log` directly.** All context goes into `req.wideEvent`. The interceptor handles emission.
-2. **Never log passwords, tokens, CPFs, or full emails.** Mask sensitive fields: `email: maskEmail(dto.email)` → `j***@gmail.com`.
+2. **Never log passwords, tokens, CPFs, or full emails.** Mask sensitive fields using `maskEmail()` / `maskPhone()` from `@common/utils/mask.util`: `email: maskEmail(dto.email)` → `j***@gmail.com`.
 3. **Always include the `request_id`.** Passed via `X-Request-Id` header or auto-generated. This correlates front-end errors to back-end events.
 4. **Use concrete values, not vague messages.** Not `"something went wrong"` — instead: `error.code: "P2002"`, `error.type: "PrismaClientKnownRequestError"`.
 5. **Log business context, not implementation details.** `lead.service_interest: "tax_filing"` is useful. `"Entering LeadsService.create()"` is noise.
@@ -1055,5 +906,5 @@ npx prisma generate      # Regenerate client after schema change
 
 ---
 
-> **Last updated:** 2026-03-05
+> **Last updated:** 2026-03-06
 > **Maintainer:** @caetanojpo

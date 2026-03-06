@@ -3,12 +3,11 @@ services:
     image: postgres:16-alpine
     container_name: oliveto_postgres
     restart: unless-stopped
+    network_mode: host
     environment:
       POSTGRES_USER: oliveto
       POSTGRES_PASSWORD: oliveto
       POSTGRES_DB: oliveto
-    ports:
-      - '5432:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -16,8 +15,7 @@ services:
     image: redis:7-alpine
     container_name: oliveto_redis
     restart: unless-stopped
-    ports:
-      - '6379:6379'
+    network_mode: host
     volumes:
       - redis_data:/data
 

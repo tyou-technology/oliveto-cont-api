@@ -1,10 +1,10 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { PaginationQueryDto } from '@common/dto/pagination.dto';
+import { PaginationQueryRequest } from '@common/dto/pagination.dto';
 import { Role } from '@common/types/enums';
-import { UpdateUserDto, UpdateUserRoleDto } from '@modules/users/dto/update-user.dto';
-import { UsersController } from '@modules/users/users.controller';
-import { UsersService } from '@modules/users/users.service';
+import { UpdateUserRequest, UpdateUserRoleRequest } from '@modules/users/dto/update-user.request';
+import { UsersController } from '@modules/users/resource/users.controller';
+import { UsersService } from '@modules/users/service/users.service';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -64,7 +64,7 @@ describe('UsersController', () => {
   // ── PATCH /users/me ─────────────────────────────────────────────────────────
 
   describe('updateMe()', () => {
-    const dto: UpdateUserDto = { name: 'John Updated' };
+    const dto: UpdateUserRequest = { name: 'John Updated' };
 
     it('should update and return the current user profile', async () => {
       const updated = { ...mockUser, name: 'John Updated' };
@@ -92,7 +92,7 @@ describe('UsersController', () => {
   // ── GET /users ──────────────────────────────────────────────────────────────
 
   describe('listUsers()', () => {
-    const query: PaginationQueryDto = { page: 1, limit: 10 };
+    const query: PaginationQueryRequest = { page: 1, limit: 10 };
 
     it('should return a paginated list when called by an admin', async () => {
       const paginatedResult = {
@@ -108,7 +108,7 @@ describe('UsersController', () => {
     });
 
     it('should pass pagination query to the service', async () => {
-      const bigQuery: PaginationQueryDto = { page: 3, limit: 20 };
+      const bigQuery: PaginationQueryRequest = { page: 3, limit: 20 };
       mockUsersService.list.mockResolvedValue({ data: [], meta: {} });
 
       await controller.listUsers(bigQuery);
@@ -120,7 +120,7 @@ describe('UsersController', () => {
   // ── PATCH /users/:id/role ───────────────────────────────────────────────────
 
   describe('updateUserRole()', () => {
-    const dto: UpdateUserRoleDto = { role: Role.EDITOR };
+    const dto: UpdateUserRoleRequest = { role: Role.EDITOR };
 
     it('should update and return the user with the new role', async () => {
       const updated = { ...mockUser, role: Role.EDITOR };

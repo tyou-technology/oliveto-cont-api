@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
+import { WideEventInterceptor } from './common/interceptors/wide-event.interceptor';
 import { globalValidationPipe } from './common/pipes/validation.pipe';
 
 async function bootstrap() {
@@ -31,6 +32,9 @@ async function bootstrap() {
   // Global validation
   app.useGlobalPipes(globalValidationPipe);
 
+  // Global interceptors
+  app.useGlobalInterceptors(new WideEventInterceptor());
+
   // Global guards
   const reflector = app.get(Reflector);
   app.useGlobalGuards(new JwtAuthGuard(reflector), new RolesGuard(reflector));
@@ -49,7 +53,7 @@ async function bootstrap() {
     logger.log('Swagger available at /api/docs');
   }
 
-  const port = config.get<number>('PORT') ?? 3001;
+  const port = config.get<number>('PORT') ?? 8080;
   await app.listen(port);
   logger.log(`Application running on port ${port}`);
 }

@@ -45,14 +45,16 @@ model Article {
   id             String        @id @default(cuid())
   title          String
   slug           String        @unique
-  excerpt        String?
+  briefing       String?
   content        String        @db.Text
+  readingTime    Int           @map("reading_time")
+  visitsCount    Int           @default(0) @map("visits_count")
   coverUrl       String?       @map("cover_url")
   status         ArticleStatus @default(DRAFT)
   publishedAt    DateTime?     @map("published_at")
   author         User          @relation(fields: [authorId], references: [id])
   authorId       String        @map("author_id")
-  tags           String[]      @default([])
+  articleTags    ArticleTag[]
   seoTitle       String?       @map("seo_title")
   seoDescription String?       @map("seo_description")
   createdAt      DateTime      @default(now()) @map("created_at")
@@ -61,6 +63,29 @@ model Article {
   @@index([status, publishedAt])
   @@index([slug])
   @@map("articles")
+}
+
+model Tag {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  color       String?
+  icon        String?
+  articleTags ArticleTag[]
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@map("tags")
+}
+
+model ArticleTag {
+  articleId String  @map("article_id")
+  tagId     String  @map("tag_id")
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@map("article_tags")
 }
 
 model Lead {

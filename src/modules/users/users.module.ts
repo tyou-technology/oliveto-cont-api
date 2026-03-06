@@ -1,11 +1,12 @@
-// TODO: implement — driven by tests
 import { Module } from '@nestjs/common';
-import { UsersController } from './users.controller';
-import { UsersService } from './users.service';
+import { UserMapper } from './mapper/user.mapper';
+import { UsersRepository } from './repository/users.repository';
+import { UsersController } from './resource/users.controller';
+import { UsersService } from './service/users.service';
 
 @Module({
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, UsersRepository, UserMapper],
   exports: [UsersService],
 })
 export class UsersModule {}

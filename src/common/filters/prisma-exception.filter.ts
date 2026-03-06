@@ -1,34 +1,37 @@
 import { ArgumentsHost, Catch, ExceptionFilter, HttpStatus, Logger } from '@nestjs/common';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { Response } from 'express';
+import { DB_ERROR_CODES, DB_ERROR_MESSAGES } from '@common/constants/error-messages';
+import { PRISMA_ERROR_CODES } from '@common/constants/prisma-error-codes';
+import { WIDE_EVENT } from '@common/constants/wide-event.constants';
 
 @Catch(PrismaClientKnownRequestError)
 export class PrismaExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(PrismaExceptionFilter.name);
+  private readonly logger = new Logger(WIDE_EVENT.LOGGER_CONTEXT);
 
   catch(exception: PrismaClientKnownRequestError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
-    let code = 'DATABASE_ERROR';
-    let message = 'An unexpected database error occurred';
+    let code: string = DB_ERROR_CODES.DATABASE_ERROR;
+    let message: string = DB_ERROR_MESSAGES.UNEXPECTED;
 
     switch (exception.code) {
-      case 'P2002':
+      case PRISMA_ERROR_CODES.UNIQUE_CONSTRAINT:
         status = HttpStatus.CONFLICT;
-        code = 'UNIQUE_CONSTRAINT_VIOLATION';
-        message = 'A record with this value already exists';
+        code = DB_ERROR_CODES.UNIQUE_CONSTRAINT_VIOLATION;
+        message = DB_ERROR_MESSAGES.UNIQUE_CONSTRAINT;
         break;
-      case 'P2025':
+      case PRISMA_ERROR_CODES.RECORD_NOT_FOUND:
         status = HttpStatus.NOT_FOUND;
-        code = 'RECORD_NOT_FOUND';
-        message = 'The requested record was not found';
+        code = DB_ERROR_CODES.RECORD_NOT_FOUND;
+        message = DB_ERROR_MESSAGES.RECORD_NOT_FOUND;
         break;
-      case 'P2003':
+      case PRISMA_ERROR_CODES.FOREIGN_KEY_CONSTRAINT:
         status = HttpStatus.BAD_REQUEST;
-        code = 'FOREIGN_KEY_VIOLATION';
-        message = 'Related record does not exist';
+        code = DB_ERROR_CODES.FOREIGN_KEY_VIOLATION;
+        message = DB_ERROR_MESSAGES.FOREIGN_KEY_VIOLATION;
         break;
       default:
         this.logger.error(`Unhandled Prisma error: ${exception.code}`, exception.message);

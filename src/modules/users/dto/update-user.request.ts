@@ -1,8 +1,8 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, IsUrl, MinLength } from 'class-validator';
-import { Role } from '../../../common/types/enums';
+import { Role } from '@common/types/enums';
 
-export class UpdateUserDto {
+export class UpdateUserRequest {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
@@ -20,8 +20,8 @@ export class UpdateUserDto {
   avatarUrl?: string;
 }
 
-export class UpdateUserRoleDto {
-  @ApiPropertyOptional({ enum: Role })
+export class UpdateUserRoleRequest {
+  @ApiProperty({ enum: Role })
   @IsEnum(Role)
   role: Role;
 }

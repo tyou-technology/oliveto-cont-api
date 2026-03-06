@@ -8,6 +8,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { PrismaModule } from './modules/prisma/prisma.module';
+import { UsersModule } from './modules/users/users.module';
 
 @Module({
   imports: [
@@ -42,6 +43,7 @@ import { PrismaModule } from './modules/prisma/prisma.module';
     }),
 
     PrismaModule,
+    UsersModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -8,6 +8,7 @@ import { PrismaExceptionFilter } from './common/filters/prisma-exception.filter'
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
 import { ArticlesModule } from './modules/articles/articles.module';
+import { TagsModule } from './modules/tags/tags.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
@@ -48,6 +49,7 @@ import { UsersModule } from './modules/users/users.module';
     UsersModule,
     AuthModule,
     ArticlesModule,
+    TagsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

@@ -1,16 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ArticleStatus } from '@common/types/enums';
-
-export class ArticleAuthorEntity {
-  @ApiProperty()
-  id: string;
-
-  @ApiProperty()
-  name: string;
-
-  @ApiPropertyOptional()
-  avatarUrl: string | null;
-}
+import { ArticleAuthorEntity } from './articleAuthor.entity';
+import { ArticleTagEntity } from './articleTag.entity';
 
 export class ArticleEntity {
   @ApiProperty()
@@ -49,8 +40,8 @@ export class ArticleEntity {
   @ApiProperty({ type: () => ArticleAuthorEntity })
   author: ArticleAuthorEntity;
 
-  @ApiProperty({ type: [Object] })
-  articleTags: unknown[];
+  @ApiProperty({ type: () => [ArticleTagEntity] })
+  articleTags: { tag: ArticleTagEntity }[];
 
   @ApiPropertyOptional()
   seoTitle: string | null;

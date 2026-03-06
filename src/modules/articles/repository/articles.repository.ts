@@ -6,7 +6,11 @@ import { ArticleNotFoundException } from '@modules/articles/exception/article-no
 
 const ARTICLE_INCLUDE = {
   author: { select: { id: true, name: true, avatarUrl: true } },
-  articleTags: true,
+  articleTags: {
+    include: {
+      tag: { select: { id: true, name: true, color: true, icon: true } },
+    },
+  },
 };
 
 export interface CreateArticleData {

@@ -1,6 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { ERROR_MESSAGES } from '@common/constants/error-messages';
+import { USER_ERROR_MESSAGES as ERROR_MESSAGES } from '@modules/users/constants/users.constants';
 import { Role } from '@common/types/enums';
 import { PrismaService } from '@modules/prisma/prisma.service';
 import { CreateUserData, UpdateUserData, UsersRepository } from '@modules/users/repository/users.repository';

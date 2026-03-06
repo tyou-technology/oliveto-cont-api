@@ -11,3 +11,10 @@ export const USER_ACTIONS = {
   LIST: 'list',
   ROLE_CHANGE: 'role_change',
 } as const;
+
+export const AUTH_ACTIONS = {
+  REGISTER: 'register',
+  LOGIN: 'login',
+  REFRESH: 'refresh',
+  LOGOUT: 'logout',
+} as const;

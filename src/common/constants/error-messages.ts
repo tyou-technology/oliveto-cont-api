@@ -2,6 +2,8 @@ export const ERROR_MESSAGES = {
   USER_NOT_FOUND: 'User not found',
   EMAIL_ALREADY_EXISTS: 'Email already exists',
   ADMIN_CANNOT_CHANGE_OWN_ROLE: 'Admins cannot change their own role',
+  INVALID_CREDENTIALS: 'Invalid credentials',
+  INVALID_REFRESH_TOKEN: 'Invalid refresh token',
 } as const;
 
 export const DB_ERROR_MESSAGES = {

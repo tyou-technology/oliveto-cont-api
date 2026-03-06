@@ -4,7 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import { Role } from '@common/types/enums';
-import { UsersService } from '@modules/users/users.service';
+import { UsersService } from '@modules/users/service/users.service';
 import { AuthService } from '@modules/auth/auth.service';
 import { RegisterDto } from '@modules/auth/dto/register.dto';
 import { LoginDto } from '@modules/auth/dto/login.dto';
@@ -183,7 +183,7 @@ describe('AuthService', () => {
       expect(mockUsersService.findByEmail).toHaveBeenCalledWith('john@example.com');
       expect(result).toBeDefined();
       expect(result.id).toBe(mockUser.id);
-      expect(result.passwordHash).toBeUndefined();
+      expect((result as any).passwordHash).toBeUndefined();
     });
 
     it('should throw UnauthorizedException when the email is not registered', async () => {

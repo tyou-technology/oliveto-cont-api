@@ -488,13 +488,13 @@ const mockPrisma = { user: { findUnique: jest.fn(), create: jest.fn(), ... } };
 
 Every method must cover both **happy** and **bad** scenarios:
 
-| Scenario type | Examples |
-| ------------- | -------- |
-| Happy path | Returns expected data, correct Prisma call args, pagination meta |
-| Not found | Prisma returns `null` → `NotFoundException` |
-| Conflict | Prisma P2002 → `ConflictException` |
-| DB error | Generic error → propagates as-is (no swallowing) |
-| Security | `passwordHash` never appears in any return value |
+| Scenario type | Examples                                                         |
+| ------------- | ---------------------------------------------------------------- |
+| Happy path    | Returns expected data, correct Prisma call args, pagination meta |
+| Not found     | Prisma returns `null` → `NotFoundException`                      |
+| Conflict      | Prisma P2002 → `ConflictException`                               |
+| DB error      | Generic error → propagates as-is (no swallowing)                 |
+| Security      | `passwordHash` never appears in any return value                 |
 
 ### Running tests
 
@@ -589,6 +589,373 @@ A global `PrismaExceptionFilter` catches Prisma-specific errors and maps them to
 ### 6. Config Module
 
 All configuration comes from env vars, accessed through NestJS `ConfigService`. No `process.env` calls scattered in the codebase — only `ConfigService.get()`. Validation at startup via `Joi` or `class-validator` schema to fail fast on missing vars.
+
+---
+
+## Logging — Wide Events / Canonical Log Lines
+
+This project follows the **wide event** philosophy (ref: [loggingsucks.com](https://loggingsucks.com/)). Instead of scattering `console.log` / `Logger.log` calls across the codebase, we emit **one rich, structured event per request** at the end of the request lifecycle. That single event contains every piece of context needed to debug, alert, and analyze — no grep-ing, no guessing.
+
+### Core Principles
+
+1. **One event per request, per service.** Not 15 log lines — one JSON object with 30+ fields.
+2. **High cardinality.** Always include `user_id`, `request_id`, `lead_id`, `article_slug` — the values that actually distinguish one request from another.
+3. **High dimensionality.** The more fields, the more questions you can answer. Add business context, not just HTTP metadata.
+4. **Build throughout, emit once.** Accumulate context as the request flows through guards, pipes, and services. Emit the final event in a single interceptor at the very end.
+5. **Never log sensitive data.** No passwords, tokens, CPFs, full credit card numbers. Mask or omit.
+
+### Implementation: `WideEventInterceptor`
+
+The logging interceptor wraps every request. It initializes the event with HTTP context, lets the route handler enrich it via `request.wideEvent`, and emits it in `finally`.
+
+```typescript
+// src/common/interceptors/wide-event.interceptor.ts
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler, Logger } from '@nestjs/common';
+import { Observable, tap, catchError, throwError } from 'rxjs';
+import { Request, Response } from 'express';
+import { randomUUID } from 'crypto';
+
+@Injectable()
+export class WideEventInterceptor implements NestInterceptor {
+  private readonly logger = new Logger('WideEvent');
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const req = context.switchToHttp().getRequest<Request>();
+    const startTime = Date.now();
+
+    // Initialize the wide event — attached to the request object
+    req['wideEvent'] = {
+      timestamp: new Date().toISOString(),
+      request_id: req.headers['x-request-id'] || randomUUID(),
+      service: 'accounting-api',
+      version: process.env.npm_package_version || '0.0.0',
+      node_env: process.env.NODE_ENV,
+
+      // HTTP context
+      method: req.method,
+      path: req.route?.path || req.path,
+      url: req.originalUrl,
+      ip: req.ip,
+      user_agent: req.headers['user-agent'],
+    };
+
+    return next.handle().pipe(
+      tap(() => {
+        const res = context.switchToHttp().getResponse<Response>();
+        this.emit(req, res.statusCode, startTime, 'success');
+      }),
+      catchError((error) => {
+        this.emit(req, error.status || 500, startTime, 'error', error);
+        return throwError(() => error);
+      }),
+    );
+  }
+
+  private emit(req: Request, statusCode: number, startTime: number, outcome: string, error?: any) {
+    const event = req['wideEvent'];
+    event.status_code = statusCode;
+    event.duration_ms = Date.now() - startTime;
+    event.outcome = outcome;
+
+    if (error) {
+      event.error = {
+        type: error.name || error.constructor?.name || 'UnknownError',
+        message: error.message,
+        code: error.code,
+      };
+    }
+
+    // Emit as structured JSON — one line, all context
+    if (statusCode >= 500) {
+      this.logger.error(JSON.stringify(event));
+    } else if (statusCode >= 400) {
+      this.logger.warn(JSON.stringify(event));
+    } else {
+      this.logger.log(JSON.stringify(event));
+    }
+  }
+}
+```
+
+Register globally in `main.ts`:
+
+```typescript
+app.useGlobalInterceptors(new WideEventInterceptor());
+```
+
+### Enriching Events from Services
+
+Any controller or service can add business context to the current request's wide event. Use the `@Req()` decorator or pass the event as a parameter.
+
+```typescript
+// Helper to enrich the wide event from anywhere with access to the request
+function enrichEvent(req: Request, context: Record<string, unknown>) {
+  Object.assign(req['wideEvent'], context);
+}
+```
+
+### What Each Module Logs
+
+#### Auth Module
+
+```typescript
+// auth.service.ts — inside login()
+enrichEvent(req, {
+  auth: {
+    action: 'login',
+    method: 'local', // "local", "refresh"
+    user_id: user.id,
+    user_role: user.role,
+    token_expires_in: '15m',
+  },
+});
+
+// On failure:
+enrichEvent(req, {
+  auth: {
+    action: 'login',
+    failure_reason: 'invalid_password', // or "user_not_found", "account_disabled"
+  },
+});
+```
+
+Wide event example — successful login:
+
+```json
+{
+  "timestamp": "2025-03-10T14:23:01.412Z",
+  "request_id": "req_8f7a2b3c",
+  "service": "accounting-api",
+  "method": "POST",
+  "path": "/auth/login",
+  "status_code": 200,
+  "duration_ms": 187,
+  "outcome": "success",
+  "ip": "187.12.34.56",
+  "auth": {
+    "action": "login",
+    "method": "local",
+    "user_id": "clx7abc123",
+    "user_role": "ADMIN",
+    "token_expires_in": "15m"
+  }
+}
+```
+
+#### Leads Module
+
+```typescript
+// leads.service.ts — inside create()
+enrichEvent(req, {
+  lead: {
+    id: lead.id,
+    service_interest: dto.service, // "company_formation", "tax_filing"
+    source: dto.source, // "website", "google", "referral"
+    has_phone: !!dto.phone,
+    has_company: !!dto.company,
+    message_length: dto.message?.length || 0,
+  },
+  mail: {
+    admin_alert_sent: true, // or false if fire-and-forget failed
+  },
+});
+```
+
+Wide event example — new lead captured:
+
+```json
+{
+  "timestamp": "2025-03-10T15:01:44.871Z",
+  "request_id": "req_2d4f6a8b",
+  "service": "accounting-api",
+  "method": "POST",
+  "path": "/leads",
+  "status_code": 201,
+  "duration_ms": 342,
+  "outcome": "success",
+  "ip": "201.45.67.89",
+  "lead": {
+    "id": "clx9def456",
+    "service_interest": "tax_filing",
+    "source": "google",
+    "has_phone": true,
+    "has_company": true,
+    "message_length": 240
+  },
+  "mail": {
+    "admin_alert_sent": true
+  }
+}
+```
+
+#### Articles Module
+
+```typescript
+// articles.service.ts — inside publish()
+enrichEvent(req, {
+  article: {
+    id: article.id,
+    slug: article.slug,
+    action: 'publish', // "create", "update", "publish", "archive", "delete"
+    status_from: 'DRAFT',
+    status_to: 'PUBLISHED',
+    tags: article.tags,
+    word_count: article.content.split(/\s+/).length,
+    has_cover: !!article.coverUrl,
+    has_seo: !!(article.seoTitle && article.seoDescription),
+  },
+  user: {
+    id: currentUser.id,
+    role: currentUser.role,
+  },
+});
+```
+
+#### Users Module
+
+```typescript
+// users.service.ts — inside update()
+enrichEvent(req, {
+  user: {
+    id: targetUser.id,
+    role: targetUser.role,
+    action: 'profile_update', // "profile_update", "role_change", "list"
+    fields_changed: ['name', 'avatarUrl'], // which fields were actually modified
+  },
+});
+```
+
+### Database Query Context
+
+Add Prisma query timing to the wide event for slow query detection. Use a Prisma middleware:
+
+```typescript
+// src/modules/prisma/prisma.service.ts
+this.$use(async (params, next) => {
+  const start = Date.now();
+  const result = await next(params);
+  const duration = Date.now() - start;
+
+  // Store query stats — the interceptor will pick them up
+  if (!this.currentRequestEvent) return result;
+
+  if (!this.currentRequestEvent.db) {
+    this.currentRequestEvent.db = { query_count: 0, total_ms: 0, slowest_ms: 0 };
+  }
+  this.currentRequestEvent.db.query_count++;
+  this.currentRequestEvent.db.total_ms += duration;
+  if (duration > this.currentRequestEvent.db.slowest_ms) {
+    this.currentRequestEvent.db.slowest_ms = duration;
+    this.currentRequestEvent.db.slowest_model = params.model;
+    this.currentRequestEvent.db.slowest_action = params.action;
+  }
+
+  // Flag slow queries (> 500ms)
+  if (duration > 500) {
+    this.currentRequestEvent.db.slow_query_detected = true;
+  }
+
+  return result;
+});
+```
+
+This adds a `db` block to the wide event:
+
+```json
+{
+  "db": {
+    "query_count": 3,
+    "total_ms": 45,
+    "slowest_ms": 28,
+    "slowest_model": "Article",
+    "slowest_action": "findMany",
+    "slow_query_detected": false
+  }
+}
+```
+
+### Full Wide Event Example — Error Case
+
+A lead submission that fails validation at the database level:
+
+```json
+{
+  "timestamp": "2025-03-10T16:45:12.003Z",
+  "request_id": "req_c3e5g7i9",
+  "service": "accounting-api",
+  "version": "1.2.0",
+  "node_env": "production",
+
+  "method": "POST",
+  "path": "/leads",
+  "url": "/leads",
+  "status_code": 409,
+  "duration_ms": 89,
+  "outcome": "error",
+  "ip": "177.88.99.10",
+  "user_agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)",
+
+  "lead": {
+    "service_interest": "company_formation",
+    "source": "website",
+    "has_phone": false,
+    "has_company": false,
+    "message_length": 0
+  },
+
+  "db": {
+    "query_count": 1,
+    "total_ms": 12,
+    "slowest_ms": 12,
+    "slowest_model": "Lead",
+    "slowest_action": "create",
+    "slow_query_detected": false
+  },
+
+  "error": {
+    "type": "PrismaClientKnownRequestError",
+    "message": "Unique constraint failed on the fields: (email)",
+    "code": "P2002"
+  }
+}
+```
+
+One event, full picture: you instantly know it was a duplicate email from an iPhone user on the website, trying to ask about company formation, with no phone or company info provided. No second search needed.
+
+### Tail Sampling (Production Cost Control)
+
+At scale, store 100% of errors/slow requests, sample the rest:
+
+```typescript
+function shouldStore(event: Record<string, any>): boolean {
+  // Always keep errors
+  if (event.status_code >= 400) return true;
+
+  // Always keep slow requests (> 1s)
+  if (event.duration_ms > 1000) return true;
+
+  // Always keep slow DB queries
+  if (event.db?.slow_query_detected) return true;
+
+  // Always keep admin actions
+  if (event.user?.role === 'ADMIN') return true;
+
+  // Always keep new lead captures (business-critical)
+  if (event.lead?.id) return true;
+
+  // Sample 10% of the rest (healthy GETs, etc.)
+  return Math.random() < 0.1;
+}
+```
+
+### Rules
+
+1. **Never `console.log` directly.** All context goes into `req.wideEvent`. The interceptor handles emission.
+2. **Never log passwords, tokens, CPFs, or full emails.** Mask sensitive fields: `email: maskEmail(dto.email)` → `j***@gmail.com`.
+3. **Always include the `request_id`.** Passed via `X-Request-Id` header or auto-generated. This correlates front-end errors to back-end events.
+4. **Use concrete values, not vague messages.** Not `"something went wrong"` — instead: `error.code: "P2002"`, `error.type: "PrismaClientKnownRequestError"`.
+5. **Log business context, not implementation details.** `lead.service_interest: "tax_filing"` is useful. `"Entering LeadsService.create()"` is noise.
+6. **Every new module must define its enrichment block** in this document before implementation.
 
 ---
 

@@ -23,9 +23,7 @@ import { Roles } from '@common/decorators/roles.decorator';
 import { RolesGuard } from '@common/guards/roles.guard';
 import { PaginationQueryRequest } from '@common/dto/pagination.dto';
 import { Role } from '@common/types/enums';
-import { ERROR_MESSAGES } from '@common/constants/error-messages';
-import { ROUTES } from '@common/constants/routes';
-import { USER_ACTIONS } from '@common/constants/wide-event.constants';
+import { USER_ACTIONS, USER_ERROR_MESSAGES, USERS_ROUTES } from '@modules/users/constants/users.constants';
 import { enrichEvent } from '@common/utils/enrich-event.util';
 import { UpdateUserRequest, UpdateUserRoleRequest } from '@modules/users/dto/update-user.request';
 import { UserEntity } from '@modules/users/entity/user.entity';
@@ -33,7 +31,7 @@ import { UsersService } from '@modules/users/service/users.service';
 
 @ApiTags('users')
 @ApiBearerAuth()
-@Controller(ROUTES.USERS.BASE)
+@Controller(USERS_ROUTES.BASE)
 @UseGuards(RolesGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -41,7 +39,7 @@ export class UsersController {
   @ApiOperation({ summary: 'Get current user profile' })
   @ApiOkResponse({ type: UserEntity })
   @ApiNotFoundResponse({ description: 'User not found' })
-  @Get(ROUTES.USERS.ME)
+  @Get(USERS_ROUTES.ME)
   async getMe(@CurrentUser() currentUser: any, @Req() req?: Request) {
     const user = await this.usersService.findById(currentUser.id);
 
@@ -58,7 +56,7 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Update current user profile' })
   @ApiOkResponse({ type: UserEntity })
-  @Patch(ROUTES.USERS.ME)
+  @Patch(USERS_ROUTES.ME)
   async updateMe(
     @CurrentUser() currentUser: any,
     @Body() dto: UpdateUserRequest,
@@ -106,7 +104,7 @@ export class UsersController {
   @ApiNotFoundResponse({ description: 'User not found' })
   @ApiForbiddenResponse({ description: 'Cannot change own role' })
   @Roles(Role.ADMIN)
-  @Patch(ROUTES.USERS.ROLE)
+  @Patch(USERS_ROUTES.ROLE)
   async updateUserRole(
     @Param('id') id: string,
     @Body() dto: UpdateUserRoleRequest,
@@ -114,7 +112,7 @@ export class UsersController {
     @Req() req?: Request,
   ) {
     if (currentUser?.id === id) {
-      throw new ForbiddenException(ERROR_MESSAGES.ADMIN_CANNOT_CHANGE_OWN_ROLE);
+      throw new ForbiddenException(USER_ERROR_MESSAGES.ADMIN_CANNOT_CHANGE_OWN_ROLE);
     }
 
     const user = await this.usersService.updateRole(id, dto);

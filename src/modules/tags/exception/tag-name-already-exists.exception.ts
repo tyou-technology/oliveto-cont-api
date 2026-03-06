@@ -1,8 +1,8 @@
 import { ConflictException } from '@nestjs/common';
-import { ERROR_MESSAGES } from '@common/constants/error-messages';
+import { TAG_ERROR_MESSAGES } from '@modules/tags/constants/tags.constants';
 
 export class TagNameAlreadyExistsException extends ConflictException {
   constructor() {
-    super(ERROR_MESSAGES.TAG_NAME_ALREADY_EXISTS);
+    super(TAG_ERROR_MESSAGES.TAG_NAME_ALREADY_EXISTS);
   }
 }

@@ -1,15 +1,3 @@
-export const ERROR_MESSAGES = {
-  USER_NOT_FOUND: 'User not found',
-  EMAIL_ALREADY_EXISTS: 'Email already exists',
-  ADMIN_CANNOT_CHANGE_OWN_ROLE: 'Admins cannot change their own role',
-  INVALID_CREDENTIALS: 'Invalid credentials',
-  INVALID_REFRESH_TOKEN: 'Invalid refresh token',
-  ARTICLE_NOT_FOUND: 'Article not found',
-  TAG_NOT_FOUND: 'Tag not found',
-  TAG_NAME_ALREADY_EXISTS: 'Tag name already exists',
-  LEAD_NOT_FOUND: 'Lead not found',
-} as const;
-
 export const DB_ERROR_MESSAGES = {
   UNEXPECTED: 'An unexpected database error occurred',
   UNIQUE_CONSTRAINT: 'A record with this value already exists',

@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
-import { ERROR_MESSAGES } from '@common/constants/error-messages';
+import { ARTICLE_ERROR_MESSAGES } from '@modules/articles/constants/articles.constants';
 
 export class ArticleNotFoundException extends NotFoundException {
   constructor() {
-    super(ERROR_MESSAGES.ARTICLE_NOT_FOUND);
+    super(ARTICLE_ERROR_MESSAGES.ARTICLE_NOT_FOUND);
   }
 }

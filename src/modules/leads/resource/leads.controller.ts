@@ -20,7 +20,7 @@ import {
 import { Public } from '@common/decorators/public.decorator';
 import { Roles } from '@common/decorators/roles.decorator';
 import { Role } from '@common/types/enums';
-import { ROUTES } from '@common/constants/routes';
+import { LEADS_ROUTES } from '@modules/leads/constants/leads.constants';
 import { LeadEntity } from '@modules/leads/entity/lead.entity';
 import { LeadsService } from '@modules/leads/service/leads.service';
 import { CreateLeadDto } from '@modules/leads/dto/create-lead.dto';
@@ -29,7 +29,7 @@ import { UpdateLeadNotesDto } from '@modules/leads/dto/update-lead-notes.dto';
 import { LeadQueryDto } from '@modules/leads/dto/lead-query.dto';
 
 @ApiTags('Leads')
-@Controller(ROUTES.LEADS.BASE)
+@Controller(LEADS_ROUTES.BASE)
 export class LeadsController {
   constructor(private readonly leadsService: LeadsService) {}
 
@@ -56,7 +56,7 @@ export class LeadsController {
   @ApiNotFoundResponse({ description: 'Lead not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @Get(ROUTES.LEADS.BY_ID)
+  @Get(LEADS_ROUTES.BY_ID)
   findLead(@Param('id') id: string) {
     return this.leadsService.findById(id);
   }
@@ -66,7 +66,7 @@ export class LeadsController {
   @ApiNotFoundResponse({ description: 'Lead not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @Patch(ROUTES.LEADS.STATUS)
+  @Patch(LEADS_ROUTES.STATUS)
   updateLeadStatus(@Param('id') id: string, @Body() dto: UpdateLeadStatusDto) {
     return this.leadsService.updateStatus(id, dto);
   }
@@ -76,7 +76,7 @@ export class LeadsController {
   @ApiNotFoundResponse({ description: 'Lead not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @Patch(ROUTES.LEADS.NOTES)
+  @Patch(LEADS_ROUTES.NOTES)
   updateLeadNotes(@Param('id') id: string, @Body() dto: UpdateLeadNotesDto) {
     return this.leadsService.addNotes(id, dto);
   }
@@ -86,7 +86,7 @@ export class LeadsController {
   @ApiNotFoundResponse({ description: 'Lead not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @Patch(ROUTES.LEADS.READ)
+  @Patch(LEADS_ROUTES.READ)
   markLeadAsRead(@Param('id') id: string) {
     return this.leadsService.markAsRead(id);
   }

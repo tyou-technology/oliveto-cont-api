@@ -9,14 +9,14 @@ import {
 } from '@nestjs/swagger';
 import { Public } from '@common/decorators/public.decorator';
 import { Roles } from '@common/decorators/roles.decorator';
-import { ROUTES } from '@common/constants/routes';
+import { TAGS_ROUTES } from '@modules/tags/constants/tags.constants';
 import { Role } from '@common/types/enums';
 import { TagsService } from '@modules/tags/service/tags.service';
 import { CreateTagDto } from '@modules/tags/dto/create-tag.dto';
 import { UpdateTagDto } from '@modules/tags/dto/update-tag.dto';
 
 @ApiTags('tags')
-@Controller(ROUTES.TAGS.BASE)
+@Controller(TAGS_ROUTES.BASE)
 export class TagsController {
   constructor(private readonly tagsService: TagsService) {}
 
@@ -32,7 +32,7 @@ export class TagsController {
   @ApiOkResponse({ description: 'Tag detail' })
   @ApiNotFoundResponse({ description: 'Tag not found' })
   @Public()
-  @Get(ROUTES.TAGS.BY_ID)
+  @Get(TAGS_ROUTES.BY_ID)
   findTag(@Param('id') id: string) {
     return this.tagsService.findById(id);
   }
@@ -53,7 +53,7 @@ export class TagsController {
   @ApiConflictResponse({ description: 'Tag name already exists' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @Patch(ROUTES.TAGS.BY_ID)
+  @Patch(TAGS_ROUTES.BY_ID)
   updateTag(@Param('id') id: string, @Body() dto: UpdateTagDto) {
     return this.tagsService.update(id, dto);
   }
@@ -63,7 +63,7 @@ export class TagsController {
   @ApiNotFoundResponse({ description: 'Tag not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @Delete(ROUTES.TAGS.BY_ID)
+  @Delete(TAGS_ROUTES.BY_ID)
   deleteTag(@Param('id') id: string) {
     return this.tagsService.delete(id);
   }

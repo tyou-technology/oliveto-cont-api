@@ -9,8 +9,7 @@ import {
 import { Request } from 'express';
 import { Public } from '@common/decorators/public.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
-import { ROUTES } from '@common/constants/routes';
-import { AUTH_ACTIONS } from '@common/constants/wide-event.constants';
+import { AUTH_ACTIONS, AUTH_ROUTES } from '@modules/auth/constants/auth.constants';
 import { enrichEvent } from '@common/utils/enrich-event.util';
 import { RegisterDto } from '@modules/auth/dto/register.dto';
 import { LoginDto } from '@modules/auth/dto/login.dto';
@@ -18,14 +17,14 @@ import { RefreshTokenDto } from '@modules/auth/dto/refresh-token.dto';
 import { AuthService } from '@modules/auth/service/auth.service';
 
 @ApiTags('auth')
-@Controller(ROUTES.AUTH.BASE)
+@Controller(AUTH_ROUTES.BASE)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @ApiOperation({ summary: 'Register a new user' })
   @ApiOkResponse({ description: 'Token pair issued' })
   @Public()
-  @Post(ROUTES.AUTH.REGISTER)
+  @Post(AUTH_ROUTES.REGISTER)
   async register(@Body() dto: RegisterDto, @Req() req?: Request) {
     const tokens = await this.authService.register(dto);
 
@@ -39,7 +38,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Post(ROUTES.AUTH.LOGIN)
+  @Post(AUTH_ROUTES.LOGIN)
   async login(@Body() dto: LoginDto, @Req() req?: Request) {
     const tokens = await this.authService.login(dto);
 
@@ -53,7 +52,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
   @Public()
   @HttpCode(HttpStatus.OK)
-  @Post(ROUTES.AUTH.REFRESH)
+  @Post(AUTH_ROUTES.REFRESH)
   async refresh(@Body() dto: RefreshTokenDto, @Req() req?: Request) {
     const tokens = await this.authService.refresh(dto);
 
@@ -67,7 +66,7 @@ export class AuthController {
   @ApiUnauthorizedResponse({ description: 'Invalid refresh token' })
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @Post(ROUTES.AUTH.LOGOUT)
+  @Post(AUTH_ROUTES.LOGOUT)
   async logout(
     @Body() dto: RefreshTokenDto,
     @CurrentUser() currentUser: any,

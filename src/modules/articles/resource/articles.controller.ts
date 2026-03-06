@@ -20,7 +20,7 @@ import {
 import { Public } from '@common/decorators/public.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { Roles } from '@common/decorators/roles.decorator';
-import { ROUTES } from '@common/constants/routes';
+import { ARTICLES_ROUTES } from '@modules/articles/constants/articles.constants';
 import { Role } from '@common/types/enums';
 import { ArticlesService } from '@modules/articles/service/articles.service';
 import { CreateArticleDto } from '@modules/articles/dto/create-article.dto';
@@ -28,7 +28,7 @@ import { UpdateArticleDto } from '@modules/articles/dto/update-article.dto';
 import { ArticleQueryDto } from '@modules/articles/dto/article-query.dto';
 
 @ApiTags('articles')
-@Controller(ROUTES.ARTICLES.BASE)
+@Controller(ARTICLES_ROUTES.BASE)
 export class ArticlesController {
   constructor(private readonly articlesService: ArticlesService) {}
 
@@ -44,7 +44,7 @@ export class ArticlesController {
   @ApiOkResponse({ description: 'Article detail' })
   @ApiNotFoundResponse({ description: 'Article not found' })
   @Public()
-  @Get(ROUTES.ARTICLES.SLUG)
+  @Get(ARTICLES_ROUTES.SLUG)
   findBySlug(@Param('slug') slug: string) {
     return this.articlesService.findBySlug(slug);
   }
@@ -63,7 +63,7 @@ export class ArticlesController {
   @ApiNotFoundResponse({ description: 'Article not found' })
   @ApiBearerAuth()
   @Roles(Role.EDITOR, Role.ADMIN)
-  @Patch(ROUTES.ARTICLES.BY_ID)
+  @Patch(ARTICLES_ROUTES.BY_ID)
   updateArticle(@Param('id') id: string, @Body() dto: UpdateArticleDto) {
     return this.articlesService.update(id, dto);
   }
@@ -73,7 +73,7 @@ export class ArticlesController {
   @ApiNotFoundResponse({ description: 'Article not found' })
   @ApiBearerAuth()
   @Roles(Role.ADMIN)
-  @Delete(ROUTES.ARTICLES.BY_ID)
+  @Delete(ARTICLES_ROUTES.BY_ID)
   deleteArticle(@Param('id') id: string) {
     return this.articlesService.delete(id);
   }
@@ -84,7 +84,7 @@ export class ArticlesController {
   @ApiBearerAuth()
   @Roles(Role.EDITOR, Role.ADMIN)
   @HttpCode(HttpStatus.OK)
-  @Patch(ROUTES.ARTICLES.PUBLISH)
+  @Patch(ARTICLES_ROUTES.PUBLISH)
   publishArticle(@Param('id') id: string) {
     return this.articlesService.publish(id);
   }
@@ -95,7 +95,7 @@ export class ArticlesController {
   @ApiBearerAuth()
   @Roles(Role.EDITOR, Role.ADMIN)
   @HttpCode(HttpStatus.OK)
-  @Patch(ROUTES.ARTICLES.ARCHIVE)
+  @Patch(ARTICLES_ROUTES.ARCHIVE)
   archiveArticle(@Param('id') id: string) {
     return this.articlesService.archive(id);
   }

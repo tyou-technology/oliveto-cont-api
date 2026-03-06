@@ -1,8 +1,8 @@
 import { NotFoundException } from '@nestjs/common';
-import { ERROR_MESSAGES } from '@common/constants/error-messages';
+import { LEAD_ERROR_MESSAGES } from '@modules/leads/constants/leads.constants';
 
 export class LeadNotFoundException extends NotFoundException {
   constructor() {
-    super(ERROR_MESSAGES.LEAD_NOT_FOUND);
+    super(LEAD_ERROR_MESSAGES.LEAD_NOT_FOUND);
   }
 }

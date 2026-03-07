@@ -538,4 +538,38 @@ describe('LeadsService', () => {
       await expect(service.list(baseQuery)).rejects.toThrow('Connection refused');
     });
   });
+
+  // ── countUnread ───────────────────────────────────────────────────────────────
+
+  describe('countUnread()', () => {
+    it('should return the count of unread leads', async () => {
+      mockPrisma.lead.count.mockResolvedValue(5);
+
+      const result = await service.countUnread();
+
+      expect(result).toEqual({ count: 5 });
+    });
+
+    it('should query only leads where isRead is false', async () => {
+      mockPrisma.lead.count.mockResolvedValue(3);
+
+      await service.countUnread();
+
+      expect(mockPrisma.lead.count).toHaveBeenCalledWith({ where: { isRead: false } });
+    });
+
+    it('should return count of 0 when all leads are read', async () => {
+      mockPrisma.lead.count.mockResolvedValue(0);
+
+      const result = await service.countUnread();
+
+      expect(result).toEqual({ count: 0 });
+    });
+
+    it('should propagate database errors', async () => {
+      mockPrisma.lead.count.mockRejectedValue(dbError());
+
+      await expect(service.countUnread()).rejects.toThrow('Connection refused');
+    });
+  });
 });

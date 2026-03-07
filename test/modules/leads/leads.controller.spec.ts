@@ -56,6 +56,7 @@ const mockLeadsService = {
   addNotes: jest.fn(),
   markAsRead: jest.fn(),
   list: jest.fn(),
+  countUnread: jest.fn(),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -374,6 +375,35 @@ describe('LeadsController', () => {
       mockLeadsService.markAsRead.mockRejectedValue(new Error('Connection refused'));
 
       await expect(controller.markLeadAsRead('lead_cuid_1')).rejects.toThrow('Connection refused');
+    });
+  });
+
+  // ── GET /leads/unread/count ───────────────────────────────────────────────────
+
+  describe('countUnreadLeads()', () => {
+    it('should return the unread count with data envelope and _links', async () => {
+      mockLeadsService.countUnread.mockResolvedValue({ count: 5 });
+
+      const result = await controller.countUnreadLeads();
+
+      expect(mockLeadsService.countUnread).toHaveBeenCalled();
+      expect(result.data).toEqual({ count: 5 });
+      expect(result._links.self).toBeDefined();
+      expect(result._links.collection).toBeDefined();
+    });
+
+    it('should return count 0 when all leads are read', async () => {
+      mockLeadsService.countUnread.mockResolvedValue({ count: 0 });
+
+      const result = await controller.countUnreadLeads();
+
+      expect(result.data).toEqual({ count: 0 });
+    });
+
+    it('should propagate service errors', async () => {
+      mockLeadsService.countUnread.mockRejectedValue(new Error('Connection refused'));
+
+      await expect(controller.countUnreadLeads()).rejects.toThrow('Connection refused');
     });
   });
 });

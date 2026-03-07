@@ -54,6 +54,22 @@ export class LeadsController {
     };
   }
 
+  @ApiOperation({ summary: 'Count unread leads (Admin only)' })
+  @ApiOkResponse({ description: 'Unread lead count' })
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN)
+  @Get(LEADS_ROUTES.UNREAD_COUNT)
+  async countUnreadLeads() {
+    const result = await this.leadsService.countUnread();
+    return {
+      data: result,
+      _links: {
+        self: { href: '/leads/unread/count', method: 'GET' },
+        collection: { href: '/leads', method: 'GET' },
+      },
+    };
+  }
+
   @ApiOperation({ summary: 'List all leads with optional filters (Admin only)' })
   @ApiOkResponse({ description: 'Paginated lead list' })
   @ApiBearerAuth()

@@ -109,4 +109,9 @@ export class LeadsService {
       },
     };
   }
+
+  async countUnread(): Promise<{ count: number }> {
+    const count = await this.prisma.lead.count({ where: { isRead: false } });
+    return { count };
+  }
 }

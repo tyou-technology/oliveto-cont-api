@@ -10,8 +10,10 @@ import { Role } from '@common/types/enums';
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const tokenPair = {
+  type: 'Bearer' as const,
   accessToken: 'signed.access.token',
   refreshToken: 'signed.refresh.token',
+  expiresIn: '15m',
 };
 
 const mockCurrentUser = {
@@ -104,8 +106,10 @@ describe('AuthController', () => {
 
     it('should delegate to AuthService.refresh and return a new token pair', async () => {
       const newTokens = {
+        type: 'Bearer' as const,
         accessToken: 'new.access.token',
         refreshToken: 'new.refresh.token',
+        expiresIn: '15m',
       };
       mockAuthService.refresh.mockResolvedValue(newTokens);
 

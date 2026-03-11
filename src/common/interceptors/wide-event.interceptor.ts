@@ -2,21 +2,21 @@ import { CallHandler, ExecutionContext, Injectable, Logger, NestInterceptor } fr
 import { randomUUID } from 'crypto';
 import { Request, Response } from 'express';
 import { Observable, catchError, tap, throwError } from 'rxjs';
-import { WIDE_EVENT } from '@common/constants/wide-event.constants';
+import { LOGGER } from '@common/constants/wide-event.constants';
 
 @Injectable()
-export class WideEventInterceptor implements NestInterceptor {
-  private readonly logger = new Logger(WIDE_EVENT.LOGGER_CONTEXT);
+export class LoggerInterceptor implements NestInterceptor {
+  private readonly logger = new Logger(LOGGER.LOGGER_CONTEXT);
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const req = context.switchToHttp().getRequest<Request>();
     const startTime = Date.now();
 
-    req['wideEvent'] = {
+    req['logger'] = {
       timestamp: new Date().toISOString(),
       request_id: (req.headers['x-request-id'] as string) || randomUUID(),
-      service: WIDE_EVENT.SERVICE_NAME,
-      version: process.env.npm_package_version || WIDE_EVENT.DEFAULT_VERSION,
+      service: LOGGER.SERVICE_NAME,
+      version: process.env.npm_package_version || LOGGER.DEFAULT_VERSION,
       node_env: process.env.NODE_ENV,
       method: req.method,
       path: req.route?.path || req.path,
@@ -45,14 +45,14 @@ export class WideEventInterceptor implements NestInterceptor {
     outcome: string,
     error?: { status?: number; code?: string; name?: string; message?: string; constructor?: { name?: string } },
   ): void {
-    const event = req['wideEvent'];
+    const event = req['logger'];
     event.status_code = statusCode;
     event.duration_ms = Date.now() - startTime;
     event.outcome = outcome;
 
     if (error) {
       event.error = {
-        type: error.name || error.constructor?.name || WIDE_EVENT.UNKNOWN_ERROR,
+        type: error.name || error.constructor?.name || LOGGER.UNKNOWN_ERROR,
         message: error.message,
         code: error.code,
       };

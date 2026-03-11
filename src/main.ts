@@ -6,7 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { RolesGuard } from './common/guards/roles.guard';
-import { WideEventInterceptor } from './common/interceptors/wide-event.interceptor';
+import { LoggerInterceptor } from './common/interceptors/wide-event.interceptor';
 import { globalValidationPipe } from './common/pipes/validation.pipe';
 
 async function bootstrap() {
@@ -33,7 +33,7 @@ async function bootstrap() {
   app.useGlobalPipes(globalValidationPipe);
 
   // Global interceptors
-  app.useGlobalInterceptors(new WideEventInterceptor());
+  app.useGlobalInterceptors(new LoggerInterceptor());
 
   // Global guards
   const reflector = app.get(Reflector);

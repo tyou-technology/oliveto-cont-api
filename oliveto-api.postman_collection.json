@@ -1,0 +1,788 @@
+{
+  "info": {
+    "name": "Oliveto API",
+    "description": "REST API for Oliveto accounting firm. Handles user management, authentication, blog articles, tags, and lead capture.\n\n## Setup\n1. Import this collection and the **Oliveto API** environment.\n2. Set `baseUrl` to `http://localhost:3001/api` (or your deployed URL).\n3. Run **POST /auth/login** — the `accessToken` and `refreshToken` variables will be set automatically via the test script.\n\n## Auth\n- Public endpoints require no token.\n- Protected endpoints read `{{accessToken}}` from the active environment.\n- Admin-only endpoints additionally require the `ADMIN` role on the authenticated user.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001/api",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Authentication endpoints — register, login, token refresh, and logout.\n\nAll endpoints are public (no JWT required). Successful login/register/refresh responses return a token pair directly (no envelope wrapper).",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/register", "host": ["{{baseUrl}}"], "path": ["auth", "register"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João Silva\",\n  \"email\": \"joao@example.com\",\n  \"password\": \"senha1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Create a new user account. Returns an access + refresh token pair on success.\n\n**Rate limit:** 10 req / 60 s"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"joao@example.com\",\n  \"password\": \"senha1234\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Authenticate with email + password. Returns an access + refresh token pair.\n\n**Rate limit:** 10 req / 60 s"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            },
+            {
+              "name": "401 Unauthorized",
+              "status": "Unauthorized",
+              "code": 401,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"statusCode\": 401,\n    \"code\": \"UNAUTHORIZED\",\n    \"message\": \"Invalid credentials\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('accessToken', body.accessToken);",
+                  "  pm.collectionVariables.set('refreshToken', body.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/refresh", "host": ["{{baseUrl}}"], "path": ["auth", "refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Exchange a valid refresh token for a new access + refresh token pair (rotation).\n\n**Rate limit:** 10 req / 60 s"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"refreshToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 204) {",
+                  "  pm.collectionVariables.set('accessToken', '');",
+                  "  pm.collectionVariables.set('refreshToken', '');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/auth/logout", "host": ["{{baseUrl}}"], "path": ["auth", "logout"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Blacklist the provided refresh token, invalidating the session.\n\nReturns **204 No Content**. The test script clears the stored tokens.\n\n**Rate limit:** 10 req / 60 s"
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "User profile and management.\n\n- `/users/me` — authenticated user's own profile (any role).\n- `/users` and `/users/:id/role` — admin-only management.",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] },
+            "description": "Returns the authenticated user's own profile. Requires a valid JWT."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clx7abc123\",\n    \"email\": \"joao@example.com\",\n    \"name\": \"João Silva\",\n    \"role\": \"ADMIN\",\n    \"avatarUrl\": null,\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-01-01T00:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/users/me\", \"method\": \"GET\" },\n    \"update\": { \"href\": \"/users/me\", \"method\": \"PATCH\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update My Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/users/me", "host": ["{{baseUrl}}"], "path": ["users", "me"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"João da Silva\",\n  \"password\": \"novaSenha1234\",\n  \"avatarUrl\": \"https://example.com/avatar.png\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Update the authenticated user's name, password, and/or avatar URL. All fields are optional."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clx7abc123\",\n    \"email\": \"joao@example.com\",\n    \"name\": \"João da Silva\",\n    \"role\": \"ADMIN\",\n    \"avatarUrl\": \"https://example.com/avatar.png\",\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-03-08T12:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/users/me\", \"method\": \"GET\" },\n    \"update\": { \"href\": \"/users/me\", \"method\": \"PATCH\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Users (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["users"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (min: 1)" },
+                { "key": "limit", "value": "10", "description": "Items per page (min: 1, max: 100)" },
+                { "key": "sort", "value": "", "description": "Sort field", "disabled": true }
+              ]
+            },
+            "description": "Paginated list of all users. **Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"clx7abc123\",\n      \"email\": \"joao@example.com\",\n      \"name\": \"João Silva\",\n      \"role\": \"ADMIN\",\n      \"avatarUrl\": null,\n      \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-01-01T00:00:00.000Z\"\n    }\n  ],\n  \"meta\": {\n    \"page\": 1,\n    \"limit\": 10,\n    \"total\": 1,\n    \"totalPages\": 1\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/users\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Change User Role (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/users/:id/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ":id", "role"],
+              "variable": [{ "key": "id", "value": "clx7abc123", "description": "Target user ID" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"EDITOR\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Change a user's role. **Requires ADMIN role.** An admin cannot change their own role.\n\n**Allowed roles:** `ADMIN`, `EDITOR`, `USER`"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clx7abc123\",\n    \"email\": \"joao@example.com\",\n    \"name\": \"João Silva\",\n    \"role\": \"EDITOR\",\n    \"avatarUrl\": null,\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-03-08T12:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/users/clx7abc123\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/users\", \"method\": \"GET\" }\n  }\n}"
+            },
+            {
+              "name": "403 Forbidden (own role)",
+              "status": "Forbidden",
+              "code": 403,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"statusCode\": 403,\n    \"code\": \"FORBIDDEN\",\n    \"message\": \"Cannot change your own role\"\n  }\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Articles",
+      "description": "Blog article management.\n\n- Public read endpoints: `GET /articles/published`, `GET /articles/slug/:slug`.\n- All other endpoints require ADMIN role.",
+      "item": [
+        {
+          "name": "List Published Articles (Public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/articles/published?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles", "published"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (min: 1)" },
+                { "key": "limit", "value": "10", "description": "Items per page (min: 1)" },
+                { "key": "tagId", "value": "", "description": "Filter by tag ID", "disabled": true },
+                { "key": "search", "value": "", "description": "Full-text search in title/content", "disabled": true }
+              ]
+            },
+            "description": "Returns paginated PUBLISHED articles. No authentication required."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"clx8def456\",\n      \"title\": \"Como Declarar o Imposto de Renda 2026\",\n      \"slug\": \"como-declarar-imposto-renda-2026\",\n      \"content\": \"...\",\n      \"briefing\": \"Guia completo para declaração de IR.\",\n      \"readingTime\": 8,\n      \"status\": \"PUBLISHED\",\n      \"coverUrl\": \"https://cdn.example.com/cover.jpg\",\n      \"seoTitle\": null,\n      \"seoDescription\": null,\n      \"authorId\": \"clx7abc123\",\n      \"author\": { \"id\": \"clx7abc123\", \"name\": \"João Silva\", \"avatarUrl\": null },\n      \"tags\": [{ \"id\": \"clxtag001\", \"name\": \"Imposto de Renda\", \"color\": \"#2563EB\" }],\n      \"createdAt\": \"2026-02-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-02-10T00:00:00.000Z\",\n      \"publishedAt\": \"2026-02-10T00:00:00.000Z\"\n    }\n  ],\n  \"meta\": { \"page\": 1, \"limit\": 10, \"total\": 1, \"totalPages\": 1 },\n  \"_links\": { \"self\": { \"href\": \"/articles/published\", \"method\": \"GET\" } }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Article by Slug (Public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/articles/slug/:slug",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles", "slug", ":slug"],
+              "variable": [{ "key": "slug", "value": "como-declarar-imposto-renda-2026", "description": "Article slug" }]
+            },
+            "description": "Fetch a single article by its URL slug. No authentication required."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clx8def456\",\n    \"title\": \"Como Declarar o Imposto de Renda 2026\",\n    \"slug\": \"como-declarar-imposto-renda-2026\",\n    \"content\": \"...\",\n    \"briefing\": \"Guia completo para declaração de IR.\",\n    \"readingTime\": 8,\n    \"status\": \"PUBLISHED\",\n    \"coverUrl\": \"https://cdn.example.com/cover.jpg\",\n    \"seoTitle\": null,\n    \"seoDescription\": null,\n    \"authorId\": \"clx7abc123\",\n    \"author\": { \"id\": \"clx7abc123\", \"name\": \"João Silva\", \"avatarUrl\": null },\n    \"tags\": [],\n    \"createdAt\": \"2026-02-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-02-10T00:00:00.000Z\",\n    \"publishedAt\": \"2026-02-10T00:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/articles/slug/como-declarar-imposto-renda-2026\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/articles\", \"method\": \"GET\" }\n  }\n}"
+            },
+            {
+              "name": "404 Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"statusCode\": 404,\n    \"code\": \"NOT_FOUND\",\n    \"message\": \"Article not found\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List All Articles (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/articles?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (min: 1)" },
+                { "key": "limit", "value": "10", "description": "Items per page (min: 1)" },
+                { "key": "status", "value": "", "description": "Filter: DRAFT | PUBLISHED | ARCHIVED", "disabled": true },
+                { "key": "tagId", "value": "", "description": "Filter by tag ID", "disabled": true },
+                { "key": "search", "value": "", "description": "Full-text search", "disabled": true }
+              ]
+            },
+            "description": "Paginated list of all articles regardless of status. **Requires ADMIN role.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Article by ID (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/articles/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles", ":id"],
+              "variable": [{ "key": "id", "value": "clx8def456", "description": "Article ID" }]
+            },
+            "description": "Fetch a single article by its ID. **Requires ADMIN role.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Article (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/articles", "host": ["{{baseUrl}}"], "path": ["articles"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Como Declarar o Imposto de Renda 2026\",\n  \"content\": \"Neste artigo, vamos explicar o passo a passo para declarar o Imposto de Renda em 2026...\",\n  \"briefing\": \"Guia completo e atualizado para a declaração do IR 2026.\",\n  \"readingTime\": 8,\n  \"tagIds\": [\"clxtag001\"],\n  \"coverUrl\": \"https://cdn.example.com/cover.jpg\",\n  \"seoTitle\": \"IR 2026: Como Declarar o Imposto de Renda\",\n  \"seoDescription\": \"Aprenda a declarar o IR 2026 com nosso guia completo.\",\n  \"status\": \"DRAFT\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Create a new article. The author is set automatically to the authenticated user.\n\n**Requires ADMIN role.**\n\n`status` defaults to `DRAFT` if omitted."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clx8def456\",\n    \"title\": \"Como Declarar o Imposto de Renda 2026\",\n    \"slug\": \"como-declarar-imposto-renda-2026\",\n    \"status\": \"DRAFT\",\n    \"readingTime\": 8,\n    \"publishedAt\": null,\n    \"createdAt\": \"2026-03-08T12:00:00.000Z\",\n    \"updatedAt\": \"2026-03-08T12:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/articles/slug/como-declarar-imposto-renda-2026\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/articles\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Article (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/articles/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles", ":id"],
+              "variable": [{ "key": "id", "value": "clx8def456", "description": "Article ID" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Como Declarar o Imposto de Renda 2026 — Guia Completo\",\n  \"briefing\": \"Atualizado com as novas regras da Receita Federal.\",\n  \"readingTime\": 10\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Partially update an article. All fields are optional. **Requires ADMIN role.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Publish Article (Admin)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/articles/:id/publish",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles", ":id", "publish"],
+              "variable": [{ "key": "id", "value": "clx8def456", "description": "Article ID" }]
+            },
+            "description": "Transition an article to `PUBLISHED` status and set `publishedAt` timestamp. No request body required.\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clx8def456\",\n    \"status\": \"PUBLISHED\",\n    \"publishedAt\": \"2026-03-08T12:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/articles/slug/como-declarar-imposto-renda-2026\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/articles\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Archive Article (Admin)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/articles/:id/archive",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles", ":id", "archive"],
+              "variable": [{ "key": "id", "value": "clx8def456", "description": "Article ID" }]
+            },
+            "description": "Transition an article to `ARCHIVED` status. No request body required.\n\n**Requires ADMIN role.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Article (Admin)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/articles/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["articles", ":id"],
+              "variable": [{ "key": "id", "value": "clx8def456", "description": "Article ID" }]
+            },
+            "description": "Permanently delete an article. Returns **204 No Content**.\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Tags",
+      "description": "Article tag management.\n\n- `GET /tags` and `GET /tags/:id` are public.\n- Create, update, and delete require ADMIN role.",
+      "item": [
+        {
+          "name": "List All Tags (Public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/tags", "host": ["{{baseUrl}}"], "path": ["tags"] },
+            "description": "Returns all tags. No authentication required."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"clxtag001\",\n      \"name\": \"Imposto de Renda\",\n      \"description\": \"Artigos sobre declaração de IR\",\n      \"color\": \"#2563EB\",\n      \"icon\": \"receipt\",\n      \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n      \"updatedAt\": \"2026-01-01T00:00:00.000Z\"\n    }\n  ],\n  \"_links\": {\n    \"self\": { \"href\": \"/tags\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Tag by ID (Public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/tags/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", ":id"],
+              "variable": [{ "key": "id", "value": "clxtag001", "description": "Tag ID" }]
+            },
+            "description": "Fetch a single tag by ID. No authentication required."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clxtag001\",\n    \"name\": \"Imposto de Renda\",\n    \"description\": \"Artigos sobre declaração de IR\",\n    \"color\": \"#2563EB\",\n    \"icon\": \"receipt\",\n    \"createdAt\": \"2026-01-01T00:00:00.000Z\",\n    \"updatedAt\": \"2026-01-01T00:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/tags/clxtag001\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/tags\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Tag (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/tags", "host": ["{{baseUrl}}"], "path": ["tags"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Contabilidade\",\n  \"description\": \"Artigos sobre contabilidade empresarial\",\n  \"color\": \"#16A34A\",\n  \"icon\": \"calculator\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Create a new tag. **Requires ADMIN role.**\n\nReturns 409 Conflict if the tag name already exists."
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clxtag002\",\n    \"name\": \"Contabilidade\",\n    \"description\": \"Artigos sobre contabilidade empresarial\",\n    \"color\": \"#16A34A\",\n    \"icon\": \"calculator\",\n    \"createdAt\": \"2026-03-08T12:00:00.000Z\",\n    \"updatedAt\": \"2026-03-08T12:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/tags/clxtag002\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/tags\", \"method\": \"GET\" }\n  }\n}"
+            },
+            {
+              "name": "409 Conflict",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"error\": {\n    \"statusCode\": 409,\n    \"code\": \"CONFLICT\",\n    \"message\": \"Tag name already exists\"\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Tag (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/tags/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", ":id"],
+              "variable": [{ "key": "id", "value": "clxtag001", "description": "Tag ID" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"color\": \"#DC2626\",\n  \"description\": \"Tudo sobre declaração anual de Imposto de Renda\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Partially update a tag. All fields are optional. **Requires ADMIN role.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Tag (Admin)",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/tags/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", ":id"],
+              "variable": [{ "key": "id", "value": "clxtag001", "description": "Tag ID" }]
+            },
+            "description": "Permanently delete a tag. Returns **204 No Content**.\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Leads",
+      "description": "Lead capture and management.\n\n- `POST /leads` is public (contact form submission).\n- All other endpoints require ADMIN role.\n- Creating a lead triggers an async email notification to the admin.",
+      "item": [
+        {
+          "name": "Submit Lead (Public)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/leads", "host": ["{{baseUrl}}"], "path": ["leads"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maria Oliveira\",\n  \"email\": \"maria@empresa.com.br\",\n  \"phone\": \"+55 11 91234-5678\",\n  \"company\": \"Empresa LTDA\",\n  \"origin\": \"CONTACT_FORM\",\n  \"service\": \"Contabilidade empresarial\",\n  \"message\": \"Gostaria de saber mais sobre os serviços de contabilidade para minha empresa.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Public contact form submission. Triggers an email notification to the admin (fire-and-forget).\n\n**Rate limit:** 10 req / 60 s\n\n**origin** values: `CONTACT_FORM`, `NEWSLETTER`, `REFERRAL`, `SOCIAL_MEDIA`, `GOOGLE_ADS`, `ORGANIC_SEARCH`"
+          },
+          "response": [
+            {
+              "name": "201 Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clxlead001\",\n    \"name\": \"Maria Oliveira\",\n    \"email\": \"maria@empresa.com.br\",\n    \"phone\": \"+55 11 91234-5678\",\n    \"company\": \"Empresa LTDA\",\n    \"service\": \"Contabilidade empresarial\",\n    \"message\": \"Gostaria de saber mais sobre os serviços de contabilidade para minha empresa.\",\n    \"origin\": \"CONTACT_FORM\",\n    \"status\": \"NEW\",\n    \"notes\": null,\n    \"isRead\": false,\n    \"createdAt\": \"2026-03-08T12:00:00.000Z\",\n    \"updatedAt\": \"2026-03-08T12:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\":       { \"href\": \"/leads/clxlead001\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/leads\",             \"method\": \"GET\" },\n    \"status\":     { \"href\": \"/leads/clxlead001/status\", \"method\": \"PATCH\" },\n    \"notes\":      { \"href\": \"/leads/clxlead001/notes\",  \"method\": \"PATCH\" },\n    \"read\":       { \"href\": \"/leads/clxlead001/read\",   \"method\": \"PATCH\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Count Unread Leads (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/leads/unread/count", "host": ["{{baseUrl}}"], "path": ["leads", "unread", "count"] },
+            "description": "Returns the number of unread leads. **Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": { \"unread\": 5 },\n  \"_links\": {\n    \"self\":       { \"href\": \"/leads/unread/count\", \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/leads\",              \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "List Leads (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/leads?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["leads"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page number (min: 1)" },
+                { "key": "limit", "value": "10", "description": "Items per page (min: 1)" },
+                { "key": "status", "value": "", "description": "Filter: NEW | CONTACTED | QUALIFIED | CONVERTED | LOST", "disabled": true },
+                { "key": "origin", "value": "", "description": "Filter: CONTACT_FORM | NEWSLETTER | REFERRAL | SOCIAL_MEDIA | GOOGLE_ADS | ORGANIC_SEARCH", "disabled": true },
+                { "key": "isRead", "value": "", "description": "Filter: true | false", "disabled": true }
+              ]
+            },
+            "description": "Paginated list of leads with optional filters. **Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": [\n    {\n      \"id\": \"clxlead001\",\n      \"name\": \"Maria Oliveira\",\n      \"email\": \"maria@empresa.com.br\",\n      \"phone\": \"+55 11 91234-5678\",\n      \"company\": \"Empresa LTDA\",\n      \"service\": \"Contabilidade empresarial\",\n      \"message\": \"...\",\n      \"origin\": \"CONTACT_FORM\",\n      \"status\": \"NEW\",\n      \"notes\": null,\n      \"isRead\": false,\n      \"createdAt\": \"2026-03-08T12:00:00.000Z\",\n      \"updatedAt\": \"2026-03-08T12:00:00.000Z\"\n    }\n  ],\n  \"meta\": { \"page\": 1, \"limit\": 10, \"total\": 1, \"totalPages\": 1 },\n  \"_links\": { \"self\": { \"href\": \"/leads\", \"method\": \"GET\" } }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Lead by ID (Admin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/leads/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["leads", ":id"],
+              "variable": [{ "key": "id", "value": "clxlead001", "description": "Lead ID" }]
+            },
+            "description": "Fetch a single lead by ID. **Requires ADMIN role.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Lead Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/leads/:id/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["leads", ":id", "status"],
+              "variable": [{ "key": "id", "value": "clxlead001", "description": "Lead ID" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CONTACTED\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Update the CRM status of a lead. **Requires ADMIN role.**\n\n**Allowed values:** `NEW`, `CONTACTED`, `QUALIFIED`, `CONVERTED`, `LOST`"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clxlead001\",\n    \"status\": \"CONTACTED\",\n    \"updatedAt\": \"2026-03-08T13:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\":       { \"href\": \"/leads/clxlead001\",        \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/leads\",                   \"method\": \"GET\" },\n    \"status\":     { \"href\": \"/leads/clxlead001/status\", \"method\": \"PATCH\" },\n    \"notes\":      { \"href\": \"/leads/clxlead001/notes\",  \"method\": \"PATCH\" },\n    \"read\":       { \"href\": \"/leads/clxlead001/read\",   \"method\": \"PATCH\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update Lead Notes (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/leads/:id/notes",
+              "host": ["{{baseUrl}}"],
+              "path": ["leads", ":id", "notes"],
+              "variable": [{ "key": "id", "value": "clxlead001", "description": "Lead ID" }]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Ligou em 08/03. Interesse em contabilidade para empresa com 5 funcionários. Retornar na próxima semana.\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Add or replace internal notes on a lead. **Requires ADMIN role.**"
+          },
+          "response": []
+        },
+        {
+          "name": "Mark Lead as Read (Admin)",
+          "request": {
+            "method": "PATCH",
+            "url": {
+              "raw": "{{baseUrl}}/leads/:id/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["leads", ":id", "read"],
+              "variable": [{ "key": "id", "value": "clxlead001", "description": "Lead ID" }]
+            },
+            "description": "Mark a lead as read (`isRead: true`). No request body required.\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"id\": \"clxlead001\",\n    \"isRead\": true,\n    \"updatedAt\": \"2026-03-08T13:00:00.000Z\"\n  },\n  \"_links\": {\n    \"self\":       { \"href\": \"/leads/clxlead001\",        \"method\": \"GET\" },\n    \"collection\": { \"href\": \"/leads\",                   \"method\": \"GET\" },\n    \"status\":     { \"href\": \"/leads/clxlead001/status\", \"method\": \"PATCH\" },\n    \"notes\":      { \"href\": \"/leads/clxlead001/notes\",  \"method\": \"PATCH\" },\n    \"read\":       { \"href\": \"/leads/clxlead001/read\",   \"method\": \"PATCH\" }\n  }\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

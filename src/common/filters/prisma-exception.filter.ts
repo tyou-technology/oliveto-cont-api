@@ -3,11 +3,11 @@ import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { Response } from 'express';
 import { DB_ERROR_CODES, DB_ERROR_MESSAGES } from '@common/constants/error-messages';
 import { PRISMA_ERROR_CODES } from '@common/constants/prisma-error-codes';
-import { WIDE_EVENT } from '@common/constants/wide-event.constants';
+import { LOGGER } from '@common/constants/wide-event.constants';
 
 @Catch(PrismaClientKnownRequestError)
 export class PrismaExceptionFilter implements ExceptionFilter {
-  private readonly logger = new Logger(WIDE_EVENT.LOGGER_CONTEXT);
+  private readonly logger = new Logger(LOGGER.LOGGER_CONTEXT);
 
   catch(exception: PrismaClientKnownRequestError, host: ArgumentsHost) {
     const ctx = host.switchToHttp();

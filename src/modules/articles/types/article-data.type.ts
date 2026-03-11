@@ -21,6 +21,7 @@ export interface UpdateArticleData {
   content?: string;
   briefing?: string;
   readingTime?: number;
+  status?: ArticleStatus;
   coverUrl?: string;
   seoTitle?: string;
   seoDescription?: string;

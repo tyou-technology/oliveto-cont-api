@@ -30,8 +30,10 @@ const safeUser = (overrides: Record<string, unknown> = {}) => {
 };
 
 const tokenPair = {
+  type: 'Bearer' as const,
   accessToken: 'signed.access.token',
   refreshToken: 'signed.refresh.token',
+  expiresIn: '15m',
 };
 
 const dbError = () => new Error('Connection refused');
@@ -106,8 +108,10 @@ describe('AuthService', () => {
           password: registerDto.password,
         }),
       );
+      expect(result).toHaveProperty('type', 'Bearer');
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
+      expect(result).toHaveProperty('expiresIn');
     });
 
     it('should sign the access token with the user id, email, and role', async () => {
@@ -229,8 +233,10 @@ describe('AuthService', () => {
 
       const result = await service.login(loginDto);
 
+      expect(result).toHaveProperty('type', 'Bearer');
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
+      expect(result).toHaveProperty('expiresIn');
     });
 
     it('should throw UnauthorizedException when email does not exist', async () => {
@@ -306,8 +312,10 @@ describe('AuthService', () => {
         refreshDto.refreshToken,
         expect.objectContaining({ secret: 'test-refresh-secret-32chars-long' }),
       );
+      expect(result).toHaveProperty('type', 'Bearer');
       expect(result).toHaveProperty('accessToken', 'new.access.token');
       expect(result).toHaveProperty('refreshToken', 'new.refresh.token');
+      expect(result).toHaveProperty('expiresIn');
     });
 
     it('should sign the new access token with the payload from the old refresh token', async () => {

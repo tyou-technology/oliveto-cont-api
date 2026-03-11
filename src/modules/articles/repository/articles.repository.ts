@@ -73,6 +73,19 @@ export class ArticlesRepository {
     }
   }
 
+  async incrementVisitsCount(id: string): Promise<void> {
+    try {
+      await this.prisma.article.update({
+        where: { id },
+        data: { visitsCount: { increment: 1 } },
+        select: { id: true },
+      });
+    } catch (err) {
+      if (err?.code === PRISMA_ERROR_CODES.RECORD_NOT_FOUND) throw new ArticleNotFoundException();
+      throw err;
+    }
+  }
+
   async delete(id: string): Promise<void> {
     try {
       await this.prisma.article.delete({ where: { id } });

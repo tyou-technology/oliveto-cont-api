@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsIn, IsInt, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { ArticleStatus } from '@common/types/enums';
 
 export class CreateArticleDto {
   @ApiProperty()
@@ -42,4 +43,12 @@ export class CreateArticleDto {
   @IsOptional()
   @IsString()
   seoDescription?: string;
+
+  @ApiPropertyOptional({
+    enum: [ArticleStatus.DRAFT, ArticleStatus.PUBLISHED],
+    default: ArticleStatus.DRAFT,
+  })
+  @IsOptional()
+  @IsIn([ArticleStatus.DRAFT, ArticleStatus.PUBLISHED])
+  status?: ArticleStatus.DRAFT | ArticleStatus.PUBLISHED;
 }

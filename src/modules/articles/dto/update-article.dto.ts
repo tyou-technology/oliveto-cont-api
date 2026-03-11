@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsArray, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { ArticleStatus } from '@common/types/enums';
 
 export class UpdateArticleDto {
   @ApiPropertyOptional()
@@ -43,4 +44,9 @@ export class UpdateArticleDto {
   @IsOptional()
   @IsString()
   seoDescription?: string;
+
+  @ApiPropertyOptional({ enum: ArticleStatus })
+  @IsOptional()
+  @IsEnum(ArticleStatus)
+  status?: ArticleStatus;
 }

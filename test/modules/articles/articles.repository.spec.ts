@@ -290,6 +290,54 @@ describe('ArticlesRepository', () => {
     });
   });
 
+  // ── incrementVisitsCount ─────────────────────────────────────────────────────
+
+  describe('incrementVisitsCount()', () => {
+    it('should call prisma.article.update with increment: 1 and correct id', async () => {
+      mockPrisma.article.update.mockResolvedValue({ id: 'article_cuid_1' });
+
+      await repository.incrementVisitsCount('article_cuid_1');
+
+      expect(mockPrisma.article.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'article_cuid_1' },
+          data: { visitsCount: { increment: 1 } },
+        }),
+      );
+    });
+
+    it('should return undefined on success', async () => {
+      mockPrisma.article.update.mockResolvedValue({ id: 'article_cuid_1' });
+
+      const result = await repository.incrementVisitsCount('article_cuid_1');
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should not fetch full article relations (lightweight select)', async () => {
+      mockPrisma.article.update.mockResolvedValue({ id: 'article_cuid_1' });
+
+      await repository.incrementVisitsCount('article_cuid_1');
+
+      const callArg = mockPrisma.article.update.mock.calls[0][0];
+      expect(callArg.include).toBeUndefined();
+    });
+
+    it('should throw NotFoundException on P2025', async () => {
+      mockPrisma.article.update.mockRejectedValue(prismaP2025());
+
+      await expect(repository.incrementVisitsCount('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should propagate non-P2025 database errors', async () => {
+      mockPrisma.article.update.mockRejectedValue(dbError());
+
+      await expect(repository.incrementVisitsCount('article_cuid_1')).rejects.toThrow(
+        'Connection refused',
+      );
+    });
+  });
+
   // ── findMany ─────────────────────────────────────────────────────────────────
 
   describe('findMany()', () => {

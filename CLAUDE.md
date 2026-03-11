@@ -84,7 +84,7 @@ Each feature is a self-contained NestJS module with a consistent internal layout
 | `enum/`            | Fixed business domain enumerations                                  | Optional |
 | `exception/`       | Custom domain exceptions                                            | Yes      |
 | `mapper/`          | Manual object conversion (entity → response)                        | Yes      |
-| `repository/`      | Data access abstraction                                             | Yes      |
+| `repository/`      | Data access abstraction — **only** Prisma calls and Prisma/DB error handling. No business logic, no data transformation. | Yes      |
 | `resource/`        | REST controllers                                                    | Yes      |
 | `resource/client/` | External service clients                                            | Optional |
 | `service/`         | Business rules                                                      | Yes      |
@@ -261,6 +261,8 @@ All configuration via `ConfigService.get()`. No `process.env` calls in the codeb
 **Boy Scout Rule** — Leave code better than you found it. Fix naming and formatting as you go.
 
 **Boundary Isolation** — HTTP requests and Prisma entities must not leak into core business logic. Map at the edges.
+
+**Repository Boundary** — Repositories contain _only_ Prisma calls and Prisma/DB error handling (catching P2002, P2025, etc. and mapping to domain exceptions). No aggregation logic, no data transformation, no business rules. All of that belongs in the service layer.
 
 ---
 

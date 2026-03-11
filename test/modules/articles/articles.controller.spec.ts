@@ -86,6 +86,7 @@ const mockArticlesService = {
   delete: jest.fn(),
   list: jest.fn(),
   listPublished: jest.fn(),
+  trackView: jest.fn(),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -252,6 +253,58 @@ describe('ArticlesController', () => {
 
       expect(result.data.readingTime).toBe(8);
       expect(result.data.visitsCount).toBe(142);
+    });
+  });
+
+  // ── GET /articles/:id ────────────────────────────────────────────────────────
+
+  describe('findById()', () => {
+    it('should return the article with _links when found', async () => {
+      mockArticlesService.findById.mockResolvedValue(mockArticle);
+
+      const result = await controller.findById(mockArticle.id);
+
+      expect(mockArticlesService.findById).toHaveBeenCalledWith(mockArticle.id);
+      expect(result.data).toEqual(mockArticle);
+      expect(result._links.self).toBeDefined();
+      expect(result._links.collection).toBeDefined();
+    });
+
+    it('should include the article id in the self link', async () => {
+      mockArticlesService.findById.mockResolvedValue(mockArticle);
+
+      const result = await controller.findById(mockArticle.id);
+
+      expect(result._links.self.href).toContain(mockArticle.id);
+    });
+
+    it('should return draft articles (status-agnostic)', async () => {
+      mockArticlesService.findById.mockResolvedValue(mockArticle);
+
+      const result = await controller.findById(mockArticle.id);
+
+      expect(result.data.status).toBe(ArticleStatus.DRAFT);
+    });
+
+    it('should return articleTags with full tag data', async () => {
+      const articleWithTags = { ...mockArticle, articleTags: [mockTag] };
+      mockArticlesService.findById.mockResolvedValue(articleWithTags);
+
+      const result = await controller.findById(mockArticle.id);
+
+      expect(result.data.articleTags).toEqual([mockTag]);
+    });
+
+    it('should throw NotFoundException when the article does not exist', async () => {
+      mockArticlesService.findById.mockRejectedValue(new NotFoundException());
+
+      await expect(controller.findById('nonexistent-id')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should propagate service errors', async () => {
+      mockArticlesService.findById.mockRejectedValue(new Error('Connection refused'));
+
+      await expect(controller.findById(mockArticle.id)).rejects.toThrow('Connection refused');
     });
   });
 
@@ -452,6 +505,31 @@ describe('ArticlesController', () => {
       mockArticlesService.publish.mockRejectedValue(new Error('Connection refused'));
 
       await expect(controller.publishArticle('article_cuid_1')).rejects.toThrow('Connection refused');
+    });
+  });
+
+  // ── POST /articles/:id/view ──────────────────────────────────────────────────
+
+  describe('trackView()', () => {
+    it('should call the service and return undefined (204 No Content)', async () => {
+      mockArticlesService.trackView.mockResolvedValue(undefined);
+
+      const result = await controller.trackView('article_cuid_1');
+
+      expect(mockArticlesService.trackView).toHaveBeenCalledWith('article_cuid_1');
+      expect(result).toBeUndefined();
+    });
+
+    it('should throw NotFoundException when the article does not exist', async () => {
+      mockArticlesService.trackView.mockRejectedValue(new NotFoundException());
+
+      await expect(controller.trackView('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should propagate service errors', async () => {
+      mockArticlesService.trackView.mockRejectedValue(new Error('Connection refused'));
+
+      await expect(controller.trackView('article_cuid_1')).rejects.toThrow('Connection refused');
     });
   });
 

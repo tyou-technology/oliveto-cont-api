@@ -14,6 +14,7 @@ import { LeadsModule } from './modules/leads/leads.module';
 import { MailModule } from './modules/mail/mail.module';
 import { PrismaModule } from './modules/prisma/prisma.module';
 import { UsersModule } from './modules/users/users.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { UsersModule } from './modules/users/users.module';
     TagsModule,
     LeadsModule,
     MailModule,
+    AnalyticsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

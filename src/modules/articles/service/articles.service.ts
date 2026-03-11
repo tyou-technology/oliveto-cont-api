@@ -26,7 +26,7 @@ export class ArticlesService {
       ...rest,
       slug,
       authorId,
-      status: ArticleStatus.DRAFT,
+      status: dto.status ?? ArticleStatus.DRAFT,
       visitsCount: 0,
       ...(tagIds?.length ? { articleTags: { create: tagIds.map((tagId) => ({ tagId })) } } : {}),
     });
@@ -68,6 +68,10 @@ export class ArticlesService {
 
   async archive(id: string) {
     return this.articlesRepository.archive(id);
+  }
+
+  async trackView(id: string): Promise<void> {
+    return this.articlesRepository.incrementVisitsCount(id);
   }
 
   async delete(id: string) {

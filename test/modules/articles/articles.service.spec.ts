@@ -76,6 +76,7 @@ const mockArticlesRepo = {
   archive: jest.fn(),
   delete: jest.fn(),
   findMany: jest.fn(),
+  incrementVisitsCount: jest.fn(),
 };
 
 // ── Suite ─────────────────────────────────────────────────────────────────────
@@ -167,7 +168,7 @@ describe('ArticlesService', () => {
       expect(callArg.slug).toBe('como-abrir-uma-empresa-no-brasil');
     });
 
-    it('should default status to DRAFT on creation', async () => {
+    it('should default status to DRAFT when not provided', async () => {
       mockArticlesRepo.findBySlug.mockResolvedValue(null);
       mockArticlesRepo.create.mockResolvedValue(mockArticle);
 
@@ -175,6 +176,17 @@ describe('ArticlesService', () => {
 
       const callArg = mockArticlesRepo.create.mock.calls[0][0];
       expect(callArg.status).toBe(ArticleStatus.DRAFT);
+    });
+
+    it('should use PUBLISHED status when explicitly provided', async () => {
+      const dtoPublished: CreateArticleDto = { ...createDto, status: ArticleStatus.PUBLISHED };
+      mockArticlesRepo.findBySlug.mockResolvedValue(null);
+      mockArticlesRepo.create.mockResolvedValue({ ...mockArticle, status: ArticleStatus.PUBLISHED });
+
+      await service.create(dtoPublished, authorId);
+
+      const callArg = mockArticlesRepo.create.mock.calls[0][0];
+      expect(callArg.status).toBe(ArticleStatus.PUBLISHED);
     });
 
     it('should associate the article with the provided authorId', async () => {
@@ -415,6 +427,16 @@ describe('ArticlesService', () => {
       expect(dataStr).not.toContain('articleTags');
     });
 
+    it('should update status when provided', async () => {
+      const dto: UpdateArticleDto = { status: ArticleStatus.ARCHIVED };
+      mockArticlesRepo.update.mockResolvedValue({ ...mockArticle, status: ArticleStatus.ARCHIVED });
+
+      await service.update('article_cuid_1', dto);
+
+      const callArg = mockArticlesRepo.update.mock.calls[0][1];
+      expect(callArg.status).toBe(ArticleStatus.ARCHIVED);
+    });
+
     it('should throw NotFoundException when the article does not exist', async () => {
       mockArticlesRepo.update.mockRejectedValue(new NotFoundException());
 
@@ -517,6 +539,38 @@ describe('ArticlesService', () => {
       mockArticlesRepo.delete.mockRejectedValue(dbError());
 
       await expect(service.delete('article_cuid_1')).rejects.toThrow('Connection refused');
+    });
+  });
+
+  // ── trackView ───────────────────────────────────────────────────────────────
+
+  describe('trackView()', () => {
+    it('should delegate to the repository incrementVisitsCount', async () => {
+      mockArticlesRepo.incrementVisitsCount.mockResolvedValue(undefined);
+
+      await service.trackView('article_cuid_1');
+
+      expect(mockArticlesRepo.incrementVisitsCount).toHaveBeenCalledWith('article_cuid_1');
+    });
+
+    it('should return undefined on success', async () => {
+      mockArticlesRepo.incrementVisitsCount.mockResolvedValue(undefined);
+
+      const result = await service.trackView('article_cuid_1');
+
+      expect(result).toBeUndefined();
+    });
+
+    it('should throw NotFoundException when the article does not exist', async () => {
+      mockArticlesRepo.incrementVisitsCount.mockRejectedValue(new NotFoundException());
+
+      await expect(service.trackView('nonexistent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('should propagate non-P2025 database errors', async () => {
+      mockArticlesRepo.incrementVisitsCount.mockRejectedValue(dbError());
+
+      await expect(service.trackView('article_cuid_1')).rejects.toThrow('Connection refused');
     });
   });
 

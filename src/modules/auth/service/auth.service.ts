@@ -85,6 +85,11 @@ export class AuthService {
       }),
     ]);
 
-    return { accessToken, refreshToken };
+    return {
+      type: 'Bearer',
+      accessToken,
+      refreshToken,
+      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN') ?? '15m',
+    };
   }
 }

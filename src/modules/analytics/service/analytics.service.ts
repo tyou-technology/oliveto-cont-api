@@ -3,6 +3,7 @@ import { LeadStatus, LeadOrigin, ArticleStatus } from '@common/types/enums';
 import { ANALYTICS_DEFAULTS } from '@modules/analytics/constants/analytics.constants';
 import { AnalyticsRepository } from '@modules/analytics/repository/analytics.repository';
 import {
+  AnalyticsDashboard,
   ArticleStatusBreakdown,
   ArticleStatusGroup,
   ArticlesAnalytics,
@@ -20,6 +21,15 @@ import {
 @Injectable()
 export class AnalyticsService {
   constructor(private readonly analyticsRepository: AnalyticsRepository) {}
+
+  async getDashboard(): Promise<AnalyticsDashboard> {
+    const [stats, leads, articles] = await Promise.all([
+      this.getStats(),
+      this.getLeadsAnalytics(),
+      this.getArticlesAnalytics(),
+    ]);
+    return { stats, leads, articles };
+  }
 
   async getStats(): Promise<DashboardStats> {
     const [publishedArticles, totalViews, totalLeads, unreadLeads] = await Promise.all([

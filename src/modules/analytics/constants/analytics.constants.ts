@@ -6,6 +6,7 @@ export const ANALYTICS_ROUTES = {
 } as const;
 
 export const ANALYTICS_ACTIONS = {
+  FETCH_DASHBOARD: 'fetch_dashboard',
   FETCH_STATS: 'fetch_stats',
   FETCH_LEADS_ANALYTICS: 'fetch_leads_analytics',
   FETCH_ARTICLES_ANALYTICS: 'fetch_articles_analytics',

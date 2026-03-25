@@ -783,6 +783,80 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Analytics",
+      "description": "Dashboard analytics endpoints.\n\nAll endpoints require **ADMIN role**. Returns computed aggregations — no pagination, read-only.\n\nUse `GET /analytics` for a single call that returns all data at once.",
+      "item": [
+        {
+          "name": "Get Full Dashboard Analytics (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics", "host": ["{{baseUrl}}"], "path": ["analytics"] },
+            "description": "Single call that returns all dashboard analytics combined:\n- `stats` — KPI counters (publishedArticles, totalViews, totalLeads, unreadLeads)\n- `leads` — breakdown by status/origin, conversion rate, 12-month trend\n- `articles` — breakdown by status, trending tags, top 5 articles by visits\n\nAll three groups are fetched in parallel on the server.\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"stats\": {\n      \"publishedArticles\": 12,\n      \"totalViews\": 3840,\n      \"totalLeads\": 47,\n      \"unreadLeads\": 5\n    },\n    \"leads\": {\n      \"byStatus\": {\n        \"new\": 12,\n        \"contacted\": 18,\n        \"qualified\": 8,\n        \"converted\": 5,\n        \"lost\": 4\n      },\n      \"byOrigin\": {\n        \"contactForm\": 20,\n        \"newsletter\": 4,\n        \"referral\": 6,\n        \"socialMedia\": 8,\n        \"googleAds\": 5,\n        \"organicSearch\": 4\n      },\n      \"conversionRate\": 28,\n      \"monthlyTrend\": [\n        { \"month\": \"2025-04\", \"count\": 2 },\n        { \"month\": \"2026-03\", \"count\": 2 }\n      ]\n    },\n    \"articles\": {\n      \"byStatus\": {\n        \"draft\": 3,\n        \"published\": 12,\n        \"archived\": 2\n      },\n      \"trendingTags\": [\n        {\n          \"id\": \"clxtag001\",\n          \"name\": \"Imposto de Renda\",\n          \"color\": \"#2563EB\",\n          \"icon\": \"receipt\",\n          \"articleCount\": 4,\n          \"totalViews\": 1230\n        }\n      ],\n      \"topArticles\": [\n        {\n          \"id\": \"clx8def456\",\n          \"title\": \"Como Declarar o Imposto de Renda 2026\",\n          \"slug\": \"como-declarar-imposto-renda-2026\",\n          \"visitsCount\": 542,\n          \"readingTime\": 8,\n          \"publishedAt\": \"2026-02-10T00:00:00.000Z\"\n        }\n      ]\n    }\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/analytics\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Dashboard Stats (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/stats", "host": ["{{baseUrl}}"], "path": ["analytics", "stats"] },
+            "description": "Returns top-level KPI counters for the dashboard:\n- `publishedArticles` — total published articles\n- `totalViews` — sum of `visitsCount` across all articles\n- `totalLeads` — all leads ever submitted\n- `unreadLeads` — leads not yet read by an admin\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"publishedArticles\": 12,\n    \"totalViews\": 3840,\n    \"totalLeads\": 47,\n    \"unreadLeads\": 5\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/analytics/stats\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Leads Analytics (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/leads", "host": ["{{baseUrl}}"], "path": ["analytics", "leads"] },
+            "description": "Returns lead analytics breakdown:\n- `byStatus` — count per status (NEW, CONTACTED, QUALIFIED, CONVERTED, LOST)\n- `byOrigin` — count per acquisition channel\n- `conversionRate` — percentage of leads that reached QUALIFIED or CONVERTED\n- `monthlyTrend` — leads created per month for the last 12 months (YYYY-MM format)\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"byStatus\": {\n      \"new\": 12,\n      \"contacted\": 18,\n      \"qualified\": 8,\n      \"converted\": 5,\n      \"lost\": 4\n    },\n    \"byOrigin\": {\n      \"contactForm\": 20,\n      \"newsletter\": 4,\n      \"referral\": 6,\n      \"socialMedia\": 8,\n      \"googleAds\": 5,\n      \"organicSearch\": 4\n    },\n    \"conversionRate\": 28,\n    \"monthlyTrend\": [\n      { \"month\": \"2025-04\", \"count\": 2 },\n      { \"month\": \"2025-05\", \"count\": 4 },\n      { \"month\": \"2025-06\", \"count\": 3 },\n      { \"month\": \"2025-07\", \"count\": 5 },\n      { \"month\": \"2025-08\", \"count\": 6 },\n      { \"month\": \"2025-09\", \"count\": 4 },\n      { \"month\": \"2025-10\", \"count\": 3 },\n      { \"month\": \"2025-11\", \"count\": 7 },\n      { \"month\": \"2025-12\", \"count\": 5 },\n      { \"month\": \"2026-01\", \"count\": 4 },\n      { \"month\": \"2026-02\", \"count\": 2 },\n      { \"month\": \"2026-03\", \"count\": 2 }\n    ]\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/analytics/leads\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get Articles Analytics (Admin)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/analytics/articles", "host": ["{{baseUrl}}"], "path": ["analytics", "articles"] },
+            "description": "Returns article analytics breakdown:\n- `byStatus` — count per status (DRAFT, PUBLISHED, ARCHIVED)\n- `trendingTags` — tags ranked by total `visitsCount` of their published articles; includes `articleCount` and `totalViews`\n- `topArticles` — top 5 published articles by visit count\n\n**Requires ADMIN role.**"
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"data\": {\n    \"byStatus\": {\n      \"draft\": 3,\n      \"published\": 12,\n      \"archived\": 2\n    },\n    \"trendingTags\": [\n      {\n        \"id\": \"clxtag001\",\n        \"name\": \"Imposto de Renda\",\n        \"color\": \"#2563EB\",\n        \"icon\": \"receipt\",\n        \"articleCount\": 4,\n        \"totalViews\": 1230\n      },\n      {\n        \"id\": \"clxtag002\",\n        \"name\": \"Contabilidade\",\n        \"color\": \"#16A34A\",\n        \"icon\": \"calculator\",\n        \"articleCount\": 3,\n        \"totalViews\": 870\n      }\n    ],\n    \"topArticles\": [\n      {\n        \"id\": \"clx8def456\",\n        \"title\": \"Como Declarar o Imposto de Renda 2026\",\n        \"slug\": \"como-declarar-imposto-renda-2026\",\n        \"visitsCount\": 542,\n        \"readingTime\": 8,\n        \"publishedAt\": \"2026-02-10T00:00:00.000Z\"\n      },\n      {\n        \"id\": \"clx8def457\",\n        \"title\": \"MEI: O Que Muda em 2026\",\n        \"slug\": \"mei-o-que-muda-em-2026\",\n        \"visitsCount\": 388,\n        \"readingTime\": 5,\n        \"publishedAt\": \"2026-01-15T00:00:00.000Z\"\n      }\n    ]\n  },\n  \"_links\": {\n    \"self\": { \"href\": \"/analytics/articles\", \"method\": \"GET\" }\n  }\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

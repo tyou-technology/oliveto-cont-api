@@ -92,3 +92,9 @@ export interface ArticlesAnalytics {
   trendingTags: TrendingTag[];
   topArticles: TopArticle[];
 }
+
+export interface AnalyticsDashboard {
+  stats: DashboardStats;
+  leads: LeadsAnalytics;
+  articles: ArticlesAnalytics;
+}

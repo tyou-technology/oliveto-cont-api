@@ -6,6 +6,7 @@ import { enrichEvent } from '@common/utils/enrich-event.util';
 import { Role } from '@common/types/enums';
 import { ANALYTICS_ACTIONS, ANALYTICS_ROUTES } from '@modules/analytics/constants/analytics.constants';
 import { AnalyticsService } from '@modules/analytics/service/analytics.service';
+import { AnalyticsDashboardEntity } from '@modules/analytics/entity/analytics-dashboard.entity';
 import { DashboardStatsEntity } from '@modules/analytics/entity/dashboard-stats.entity';
 import { LeadsAnalyticsEntity } from '@modules/analytics/entity/leads-analytics.entity';
 import { ArticlesAnalyticsEntity } from '@modules/analytics/entity/articles-analytics.entity';
@@ -16,6 +17,20 @@ import { ArticlesAnalyticsEntity } from '@modules/analytics/entity/articles-anal
 @Controller(ANALYTICS_ROUTES.BASE)
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
+
+  @ApiOperation({ summary: 'Get full dashboard analytics in one call (Admin only)' })
+  @ApiOkResponse({ type: AnalyticsDashboardEntity })
+  @Get()
+  async getDashboard(@Req() req?: Request) {
+    const dashboard = await this.analyticsService.getDashboard();
+
+    enrichEvent(req, { analytics: { action: ANALYTICS_ACTIONS.FETCH_DASHBOARD } });
+
+    return {
+      data: dashboard,
+      _links: { self: { href: `/${ANALYTICS_ROUTES.BASE}`, method: 'GET' } },
+    };
+  }
 
   @ApiOperation({ summary: 'Get dashboard KPI stats (Admin only)' })
   @ApiOkResponse({ type: DashboardStatsEntity })

@@ -1,4 +1,4 @@
-import { ExecutionContext, Injectable } from '@nestjs/common';
+import { ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
@@ -18,5 +18,13 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (isPublic) return true;
 
     return super.canActivate(context);
+  }
+
+  // Ensure expired/invalid/missing tokens always return 401, never 403 or 404
+  handleRequest<TUser>(err: Error | null, user: TUser | false): TUser {
+    if (err || !user) {
+      throw new UnauthorizedException(err?.message ?? 'Unauthorized');
+    }
+    return user;
   }
 }

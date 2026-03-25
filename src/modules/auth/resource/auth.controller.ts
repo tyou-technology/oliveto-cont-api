@@ -1,4 +1,13 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+  Res,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiCreatedResponse,
@@ -9,16 +18,24 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { Public } from '@common/decorators/public.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { JwtPayload } from '@common/types/jwt-payload.type';
-import { AUTH_ACTIONS, AUTH_ROUTES } from '@modules/auth/constants/auth.constants';
+import {
+  AUTH_ACTIONS,
+  AUTH_ERROR_MESSAGES,
+  AUTH_ROUTES,
+  REFRESH_TOKEN_COOKIE,
+} from '@modules/auth/constants/auth.constants';
 import { enrichEvent } from '@common/utils/enrich-event.util';
 import { RegisterDto } from '@modules/auth/dto/register.dto';
 import { LoginDto } from '@modules/auth/dto/login.dto';
-import { RefreshTokenDto } from '@modules/auth/dto/refresh-token.dto';
+import { TokenResponseDto } from '@modules/auth/dto/token-response.dto';
+import { AccessTokenResponse } from '@modules/auth/types/access-token-response.type';
 import { AuthService } from '@modules/auth/service/auth.service';
+
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 @ApiTags('auth')
 @Throttle({ strict: { ttl: 60000, limit: 10 } })
@@ -27,58 +44,85 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @ApiOperation({ summary: 'Register a new user' })
-  @ApiCreatedResponse({ description: 'Token pair issued' })
+  @ApiCreatedResponse({ type: TokenResponseDto, description: 'Access token issued; refresh token set as HttpOnly cookie' })
   @Public()
   @Post(AUTH_ROUTES.REGISTER)
-  async register(@Body() dto: RegisterDto, @Req() req?: Request) {
+  async register(
+    @Body() dto: RegisterDto,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ): Promise<AccessTokenResponse> {
     const tokens = await this.authService.register(dto);
-
+    this.setRefreshCookie(res, tokens.refreshToken);
     enrichEvent(req, { auth: { action: AUTH_ACTIONS.REGISTER } });
-
-    return tokens;
+    return { type: tokens.type, accessToken: tokens.accessToken, expiresIn: tokens.expiresIn };
   }
 
   @ApiOperation({ summary: 'Login with email and password' })
-  @ApiOkResponse({ description: 'Token pair issued' })
+  @ApiOkResponse({ type: TokenResponseDto, description: 'Access token issued; refresh token set as HttpOnly cookie' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post(AUTH_ROUTES.LOGIN)
-  async login(@Body() dto: LoginDto, @Req() req?: Request) {
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+    @Req() req: Request,
+  ): Promise<AccessTokenResponse> {
     const tokens = await this.authService.login(dto);
-
+    this.setRefreshCookie(res, tokens.refreshToken);
     enrichEvent(req, { auth: { action: AUTH_ACTIONS.LOGIN } });
-
-    return tokens;
+    return { type: tokens.type, accessToken: tokens.accessToken, expiresIn: tokens.expiresIn };
   }
 
-  @ApiOperation({ summary: 'Refresh access token using refresh token' })
-  @ApiOkResponse({ description: 'New token pair issued' })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token' })
+  @ApiOperation({ summary: 'Refresh access token using the HttpOnly refresh token cookie' })
+  @ApiOkResponse({ type: TokenResponseDto, description: 'New access token issued; new refresh token cookie set' })
+  @ApiUnauthorizedResponse({ description: 'Missing or invalid refresh token cookie' })
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post(AUTH_ROUTES.REFRESH)
-  async refresh(@Body() dto: RefreshTokenDto, @Req() req?: Request) {
-    const tokens = await this.authService.refresh(dto);
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AccessTokenResponse> {
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
+    if (!refreshToken) {
+      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.MISSING_REFRESH_TOKEN);
+    }
 
+    const tokens = await this.authService.refresh(refreshToken);
+    this.setRefreshCookie(res, tokens.refreshToken);
     enrichEvent(req, { auth: { action: AUTH_ACTIONS.REFRESH } });
-
-    return tokens;
+    return { type: tokens.type, accessToken: tokens.accessToken, expiresIn: tokens.expiresIn };
   }
 
-  @ApiOperation({ summary: 'Logout and invalidate refresh token' })
+  @ApiOperation({ summary: 'Logout and clear the refresh token cookie' })
   @ApiNoContentResponse({ description: 'Logged out successfully' })
-  @ApiUnauthorizedResponse({ description: 'Invalid refresh token' })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token cookie' })
   @ApiBearerAuth()
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post(AUTH_ROUTES.LOGOUT)
   async logout(
-    @Body() dto: RefreshTokenDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
     @CurrentUser() currentUser: JwtPayload,
-    @Req() req?: Request,
   ): Promise<void> {
-    await this.authService.logout(dto);
-
+    const refreshToken = req.cookies?.[REFRESH_TOKEN_COOKIE] as string | undefined;
+    if (refreshToken) {
+      await this.authService.logout(refreshToken);
+    }
+    res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/' });
     enrichEvent(req, { auth: { action: AUTH_ACTIONS.LOGOUT, user_id: currentUser?.id } });
+  }
+
+  private setRefreshCookie(res: Response, token: string): void {
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie(REFRESH_TOKEN_COOKIE, token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? 'none' : 'lax',
+      maxAge: SEVEN_DAYS_MS,
+      path: '/',
+    });
   }
 }

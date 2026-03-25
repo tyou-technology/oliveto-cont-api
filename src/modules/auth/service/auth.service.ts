@@ -5,7 +5,6 @@ import * as bcrypt from 'bcrypt';
 import { AUTH_ERROR_MESSAGES } from '@modules/auth/constants/auth.constants';
 import { RegisterDto } from '@modules/auth/dto/register.dto';
 import { LoginDto } from '@modules/auth/dto/login.dto';
-import { RefreshTokenDto } from '@modules/auth/dto/refresh-token.dto';
 import { TokenPair } from '@modules/auth/types/token-pair.type';
 import { JwtRawPayload } from '@modules/auth/types/jwt-raw-payload.type';
 import { JwtPayload } from '@common/types/jwt-payload.type';
@@ -46,23 +45,28 @@ export class AuthService {
     return this.issueTokenPair(user);
   }
 
-  async refresh(dto: RefreshTokenDto): Promise<TokenPair> {
-    let payload: JwtRawPayload;
+  async refresh(refreshToken: string): Promise<TokenPair> {
+    let payload: Pick<JwtRawPayload, 'sub'>;
 
     try {
-      payload = await this.jwtService.verifyAsync<JwtRawPayload>(dto.refreshToken, {
+      payload = await this.jwtService.verifyAsync<Pick<JwtRawPayload, 'sub'>>(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
     } catch {
       throw new UnauthorizedException(AUTH_ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
     }
 
-    return this.issueTokenPair({ id: payload.sub, email: payload.email, role: payload.role });
+    const user = await this.usersService.findById(payload.sub);
+    if (!user) {
+      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
+    }
+
+    return this.issueTokenPair({ id: user.id, email: user.email, role: user.role });
   }
 
-  async logout(dto: RefreshTokenDto): Promise<void> {
+  async logout(refreshToken: string): Promise<void> {
     try {
-      await this.jwtService.verifyAsync(dto.refreshToken, {
+      await this.jwtService.verifyAsync(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
     } catch {

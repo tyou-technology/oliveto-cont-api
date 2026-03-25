@@ -1,5 +1,7 @@
 export const BCRYPT_SALT_ROUNDS = 10;
 
+export const REFRESH_TOKEN_COOKIE = 'refresh_token';
+
 export const AUTH_ROUTES = {
   BASE: 'auth',
   REGISTER: 'register',
@@ -18,4 +20,5 @@ export const AUTH_ACTIONS = {
 export const AUTH_ERROR_MESSAGES = {
   INVALID_CREDENTIALS: 'Invalid credentials',
   INVALID_REFRESH_TOKEN: 'Invalid refresh token',
+  MISSING_REFRESH_TOKEN: 'Refresh token cookie is missing',
 } as const;

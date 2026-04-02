@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
     `id` VARCHAR(191) NOT NULL,
     `email` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE `users` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `articles` (
+CREATE TABLE IF NOT EXISTS `articles` (
     `id` VARCHAR(191) NOT NULL,
     `title` VARCHAR(191) NOT NULL,
     `slug` VARCHAR(191) NOT NULL,
@@ -38,7 +38,7 @@ CREATE TABLE `articles` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `tags` (
+CREATE TABLE IF NOT EXISTS `tags` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `description` VARCHAR(191) NULL,
@@ -52,7 +52,7 @@ CREATE TABLE `tags` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `article_tags` (
+CREATE TABLE IF NOT EXISTS `article_tags` (
     `article_id` VARCHAR(191) NOT NULL,
     `tag_id` VARCHAR(191) NOT NULL,
 
@@ -60,7 +60,7 @@ CREATE TABLE `article_tags` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `leads` (
+CREATE TABLE IF NOT EXISTS `leads` (
     `id` VARCHAR(191) NOT NULL,
     `name` VARCHAR(191) NOT NULL,
     `email` VARCHAR(191) NOT NULL,
@@ -82,7 +82,7 @@ CREATE TABLE `leads` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- CreateTable
-CREATE TABLE `site_events` (
+CREATE TABLE IF NOT EXISTS `site_events` (
     `id` VARCHAR(191) NOT NULL,
     `type` ENUM('WHATSAPP_CLICK') NOT NULL,
     `page` VARCHAR(191) NULL,
@@ -92,11 +92,17 @@ CREATE TABLE `site_events` (
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
--- AddForeignKey
-ALTER TABLE `articles` ADD CONSTRAINT `articles_author_id_fkey` FOREIGN KEY (`author_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
+-- AddForeignKey (if not exists): articles_author_id_fkey
+SET @fk1 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'articles' AND CONSTRAINT_NAME = 'articles_author_id_fkey' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+SET @sql1 = IF(@fk1 = 0, 'ALTER TABLE `articles` ADD CONSTRAINT `articles_author_id_fkey` FOREIGN KEY (`author_id`) REFERENCES `users`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE', 'SELECT 1');
+PREPARE stmt1 FROM @sql1; EXECUTE stmt1; DEALLOCATE PREPARE stmt1;
 
--- AddForeignKey
-ALTER TABLE `article_tags` ADD CONSTRAINT `article_tags_article_id_fkey` FOREIGN KEY (`article_id`) REFERENCES `articles`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey (if not exists): article_tags_article_id_fkey
+SET @fk2 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'article_tags' AND CONSTRAINT_NAME = 'article_tags_article_id_fkey' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+SET @sql2 = IF(@fk2 = 0, 'ALTER TABLE `article_tags` ADD CONSTRAINT `article_tags_article_id_fkey` FOREIGN KEY (`article_id`) REFERENCES `articles`(`id`) ON DELETE CASCADE ON UPDATE CASCADE', 'SELECT 1');
+PREPARE stmt2 FROM @sql2; EXECUTE stmt2; DEALLOCATE PREPARE stmt2;
 
--- AddForeignKey
-ALTER TABLE `article_tags` ADD CONSTRAINT `article_tags_tag_id_fkey` FOREIGN KEY (`tag_id`) REFERENCES `tags`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey (if not exists): article_tags_tag_id_fkey
+SET @fk3 = (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'article_tags' AND CONSTRAINT_NAME = 'article_tags_tag_id_fkey' AND CONSTRAINT_TYPE = 'FOREIGN KEY');
+SET @sql3 = IF(@fk3 = 0, 'ALTER TABLE `article_tags` ADD CONSTRAINT `article_tags_tag_id_fkey` FOREIGN KEY (`tag_id`) REFERENCES `tags`(`id`) ON DELETE CASCADE ON UPDATE CASCADE', 'SELECT 1');
+PREPARE stmt3 FROM @sql3; EXECUTE stmt3; DEALLOCATE PREPARE stmt3;

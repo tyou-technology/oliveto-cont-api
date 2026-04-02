@@ -24,11 +24,12 @@ async function bootstrap() {
   // Security headers
   app.use(helmet());
 
-  // CORS
-  app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN'),
-    credentials: true,
-  });
+  // CORS — supports comma-separated origins: "https://a.com,https://b.com"
+  const rawOrigin = config.get<string>('CORS_ORIGIN') ?? '';
+  const corsOrigin = rawOrigin.includes(',')
+    ? rawOrigin.split(',').map((o) => o.trim())
+    : rawOrigin;
+  app.enableCors({ origin: corsOrigin, credentials: true });
 
   // Global prefix
   app.setGlobalPrefix('api');

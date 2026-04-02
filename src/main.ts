@@ -61,7 +61,7 @@ async function bootstrap() {
   // Graceful shutdown — triggers OnModuleDestroy lifecycle hooks on SIGTERM/SIGINT
   app.enableShutdownHooks();
 
-  const port = config.get<number>('PORT') ?? 8080;
+  const port = config.get<number>('PORT');
   await app.listen(port);
   logger.log(`Application running on port ${port}`);
 }

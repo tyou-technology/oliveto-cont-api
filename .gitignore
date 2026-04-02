@@ -29,3 +29,5 @@ Thumbs.db
 
 # Prisma
 prisma/migrations/dev.db
+
+.env*

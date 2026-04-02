@@ -1,15 +1,16 @@
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: oliveto_postgres
+  mysql:
+    image: mysql:8.0
+    container_name: oliveto_mysql
     restart: unless-stopped
     network_mode: host
     environment:
-      POSTGRES_USER: oliveto
-      POSTGRES_PASSWORD: oliveto
-      POSTGRES_DB: oliveto
+      MYSQL_ROOT_PASSWORD: oliveto
+      MYSQL_USER: oliveto
+      MYSQL_PASSWORD: oliveto
+      MYSQL_DATABASE: oliveto
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
 
   redis:
     image: redis:7-alpine
@@ -20,5 +21,5 @@ services:
       - redis_data:/data
 
 volumes:
-  postgres_data:
+  mysql_data:
   redis_data:

@@ -37,6 +37,15 @@ import { AuthService } from '@modules/auth/service/auth.service';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+function refreshCookieOptions(isProduction: boolean): Parameters<Response['cookie']>[2] {
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/',
+  };
+}
+
 @ApiTags('auth')
 @Throttle({ strict: { ttl: 60000, limit: 10 } })
 @Controller(AUTH_ROUTES.BASE)
@@ -111,18 +120,14 @@ export class AuthController {
     if (refreshToken) {
       await this.authService.logout(refreshToken);
     }
-    res.clearCookie(REFRESH_TOKEN_COOKIE, { path: '/' });
+    res.clearCookie(REFRESH_TOKEN_COOKIE, refreshCookieOptions(process.env.NODE_ENV === 'production'));
     enrichEvent(req, { auth: { action: AUTH_ACTIONS.LOGOUT, user_id: currentUser?.id } });
   }
 
   private setRefreshCookie(res: Response, token: string): void {
-    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie(REFRESH_TOKEN_COOKIE, token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      ...refreshCookieOptions(process.env.NODE_ENV === 'production'),
       maxAge: SEVEN_DAYS_MS,
-      path: '/',
     });
   }
 }

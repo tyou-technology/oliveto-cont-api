@@ -1,4 +1,4 @@
-export const BCRYPT_SALT_ROUNDS = 10;
+export const BCRYPT_SALT_ROUNDS = 12;
 
 export const REFRESH_TOKEN_COOKIE = 'refresh_token';
 

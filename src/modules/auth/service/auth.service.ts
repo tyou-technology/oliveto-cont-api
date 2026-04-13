@@ -57,20 +57,17 @@ export class AuthService {
     }
 
     const user = await this.usersService.findById(payload.sub);
-    if (!user) {
-      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
-    }
-
     return this.issueTokenPair({ id: user.id, email: user.email, role: user.role });
   }
 
   async logout(refreshToken: string): Promise<void> {
     try {
-      await this.jwtService.verifyAsync(refreshToken, {
+      const payload = await this.jwtService.verifyAsync<Pick<JwtRawPayload, 'sub'>>(refreshToken, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       });
+      await this.usersService.findById(payload.sub);
     } catch {
-      throw new UnauthorizedException(AUTH_ERROR_MESSAGES.INVALID_REFRESH_TOKEN);
+      // Token expired or user not found — cookie is cleared by the controller regardless.
     }
   }
 

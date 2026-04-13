@@ -98,8 +98,8 @@ export class AuthController {
 
   @ApiOperation({ summary: 'Logout and clear the refresh token cookie' })
   @ApiNoContentResponse({ description: 'Logged out successfully' })
-  @ApiUnauthorizedResponse({ description: 'Invalid or expired refresh token cookie' })
   @ApiBearerAuth()
+  @Public()
   @HttpCode(HttpStatus.NO_CONTENT)
   @Post(AUTH_ROUTES.LOGOUT)
   async logout(

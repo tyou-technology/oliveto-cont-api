@@ -18,7 +18,7 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
-import { Request, Response } from 'express';
+import { CookieOptions, Request, Response } from 'express';
 import { Public } from '@common/decorators/public.decorator';
 import { CurrentUser } from '@common/decorators/current-user.decorator';
 import { JwtPayload } from '@common/types/jwt-payload.type';
@@ -37,7 +37,7 @@ import { AuthService } from '@modules/auth/service/auth.service';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-function refreshCookieOptions(isProduction: boolean): Parameters<Response['cookie']>[2] {
+function refreshCookieOptions(isProduction: boolean): CookieOptions {
   return {
     httpOnly: true,
     secure: isProduction,

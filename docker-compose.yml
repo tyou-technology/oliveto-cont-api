@@ -9,10 +9,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    environment:
-      # Override connection strings to use Docker service names instead of localhost
-      DATABASE_URL: "mysql://oliveto:${MYSQL_PASSWORD}@mysql:3306/oliveto"
-      REDIS_URL: "redis://redis:6379"
     expose:
       - "8080"
     healthcheck:
@@ -22,14 +18,8 @@ services:
       timeout: 10s
       retries: 5
       start_period: 60s
-    depends_on:
-      mysql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     networks:
-      - oliveto      # shared with Traefik and frontend
-      - oliveto_db   # internal — DB and Redis access only
+      - oliveto
     labels:
       - traefik.enable=true
       - traefik.docker.network=oliveto
@@ -38,50 +28,7 @@ services:
       - traefik.http.routers.oliveto.tls.certresolver=letsencrypt
       - traefik.http.services.oliveto.loadbalancer.server.port=8080
 
-  mysql:
-    image: mysql:8.0
-    container_name: oliveto_mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_USER: oliveto
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
-      MYSQL_DATABASE: oliveto
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--silent"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    networks:
-      - oliveto_db   # internal only — never reachable from outside
-
-  redis:
-    image: redis:7-alpine
-    container_name: oliveto_redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - oliveto_db   # internal only — never reachable from outside
-
 networks:
   oliveto:
     name: oliveto
     driver: bridge
-  oliveto_db:
-    name: oliveto_db
-    driver: bridge
-    internal: true   # no outbound internet access for DB/Redis containers
-
-volumes:
-  mysql_data:
-  redis_data:

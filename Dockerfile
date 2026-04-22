@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 
-# ── Stage 1: deps (cacheável) ────────────────────────────────────────────────
+# ── Stage 1: deps (full) ─────────────────────────────────────────────────────
 FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN --mount=type=cache,target=/root/.npm \
+RUN --mount=type=cache,id=oliveto-api-npm-full,target=/root/.npm \
     npm ci
 
 # ── Stage 2: build ───────────────────────────────────────────────────────────
@@ -24,15 +24,15 @@ WORKDIR /app
 ENV NODE_ENV=production \
     PORT=8080
 
-RUN apk add --no-cache openssl dumb-init tini
+RUN apk add --no-cache openssl dumb-init
 
 COPY package*.json ./
 COPY prisma ./prisma/
 
-RUN --mount=type=cache,target=/root/.npm \
+# Cache ID diferente do stage `deps` — evita contenção em build paralelo
+RUN --mount=type=cache,id=oliveto-api-npm-prod,target=/root/.npm \
     npm ci --omit=dev && \
-    npx prisma generate && \
-    npm cache clean --force
+    npx prisma generate
 
 COPY --from=builder --chown=node:node /app/dist ./dist
 

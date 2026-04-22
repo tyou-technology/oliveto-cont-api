@@ -12,6 +12,10 @@ RUN npm ci
 
 COPY . .
 
+# Remove any stale incremental build cache — with "incremental: true" in tsconfig,
+# a leftover .tsbuildinfo from the host tricks TypeScript into skipping compilation.
+RUN rm -f *.tsbuildinfo
+
 # Use the CLI binary directly (more reliable than npx in Alpine)
 # Fail fast if dist/main.js is not produced
 RUN node_modules/.bin/nest build && \

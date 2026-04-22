@@ -35,7 +35,7 @@ COPY --from=builder /app/dist ./dist
 # Regenerate the Prisma client against the production runtime
 RUN npx prisma generate
 
-EXPOSE 3001
+EXPOSE 8080
 
 # Apply pending migrations, then start the server
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

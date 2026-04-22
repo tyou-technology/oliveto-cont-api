@@ -30,4 +30,7 @@ Thumbs.db
 # Prisma
 prisma/migrations/dev.db
 
+# Traefik — contains Let's Encrypt certificates, never commit
+traefik/acme.json
+
 .env*

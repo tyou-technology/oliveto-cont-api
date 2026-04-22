@@ -7,21 +7,36 @@ services:
     image: oliveto-api:latest
     container_name: oliveto_api
     restart: unless-stopped
-    ports:
-      - "${PORT:-3001}:3001"
     env_file:
       - .env
     environment:
       # Override connection strings to use Docker service names instead of localhost
       DATABASE_URL: "mysql://oliveto:${MYSQL_PASSWORD}@mysql:3306/oliveto"
       REDIS_URL: "redis://redis:6379"
+    expose:
+      - "8080"
+    healthcheck:
+      # TODO: replace with HTTP check once GET /api/health endpoint is implemented
+      test: ["CMD", "node", "-e", "require('net').connect(8080,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks:
-      - oliveto_network
+      - oliveto      # shared with Traefik and frontend
+      - oliveto_db   # internal — DB and Redis access only
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=oliveto
+      - traefik.http.routers.oliveto.rule=Host(`olivetocontabilidade.com`) || Host(`www.olivetocontabilidade.com`)
+      - traefik.http.routers.oliveto.entrypoints=websecure
+      - traefik.http.routers.oliveto.tls.certresolver=letsencrypt
+      - traefik.http.services.oliveto.loadbalancer.server.port=8080
 
   mysql:
     image: mysql:8.0
@@ -41,7 +56,7 @@ services:
       retries: 10
       start_period: 30s
     networks:
-      - oliveto_network
+      - oliveto_db   # internal only — never reachable from outside
 
   redis:
     image: redis:7-alpine
@@ -56,11 +71,16 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - oliveto_network
+      - oliveto_db   # internal only — never reachable from outside
 
 networks:
-  oliveto_network:
+  oliveto:
+    name: oliveto
     driver: bridge
+  oliveto_db:
+    name: oliveto_db
+    driver: bridge
+    internal: true   # no outbound internet access for DB/Redis containers
 
 volumes:
   mysql_data:

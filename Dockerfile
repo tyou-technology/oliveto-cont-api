@@ -10,7 +10,8 @@ RUN npm ci
 
 COPY . .
 
-RUN npm run build
+# Build only — migrations run at container startup, not at build time
+RUN npx nest build && npx prisma generate
 
 # ── Stage 2: Production ───────────────────────────────────────────────────────
 FROM node:20-alpine AS production
@@ -24,10 +25,17 @@ COPY prisma ./prisma/
 
 RUN npm ci --omit=dev && npm cache clean --force
 
+# Bring the Prisma CLI from the builder so we can run `migrate deploy` at startup.
+# prisma is a devDependency but is required at runtime to apply migrations.
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+
 COPY --from=builder /app/dist ./dist
 
+# Regenerate the Prisma client against the production runtime
 RUN npx prisma generate
 
 EXPOSE 3001
 
-CMD ["node", "dist/main"]
+# Apply pending migrations, then start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

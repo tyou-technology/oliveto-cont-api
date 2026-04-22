@@ -1,33 +1,47 @@
-# ── Stage 1: Build ────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+# syntax=docker/dockerfile:1.7
+
+# ── Stage 1: deps (cacheável) ────────────────────────────────────────────────
+FROM node:22-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache openssl
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
+
+# ── Stage 2: build ───────────────────────────────────────────────────────────
+FROM node:22-alpine AS builder
+WORKDIR /app
+RUN apk add --no-cache openssl
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npx nest build && npx prisma generate
+RUN npx prisma generate && npx nest build
+RUN test -f dist/main.js || (echo "❌ dist/main.js not found!" && exit 1)
 
-# Falha o build se dist/main.js não existir
-RUN test -f dist/main.js || (echo "❌ dist/main.js not found! Check tsconfig outDir." && exit 1)
-
-# ── Stage 2: Production ───────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+# ── Stage 3: production ──────────────────────────────────────────────────────
+FROM node:22-alpine AS production
 WORKDIR /app
-ENV NODE_ENV=production
-RUN apk add --no-cache openssl
+ENV NODE_ENV=production \
+    PORT=8080
+
+RUN apk add --no-cache openssl dumb-init tini
+
 COPY package*.json ./
 COPY prisma ./prisma/
-RUN npm ci --omit=dev && npm cache clean --force
 
-COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
-COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder /app/dist ./dist
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev && \
+    npx prisma generate && \
+    npm cache clean --force
 
-RUN npx prisma generate
+COPY --from=builder --chown=node:node /app/dist ./dist
 
-# Confirma que o artefato chegou na stage final
-RUN test -f dist/main.js || (echo "❌ dist/main.js missing in production stage!" && exit 1)
+USER node
 
 EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=5 \
+  CMD node -e "require('net').connect(8080,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))" || exit 1
+
+ENTRYPOINT ["dumb-init", "--"]
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

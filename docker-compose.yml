@@ -11,13 +11,6 @@ services:
       - .env
     expose:
       - "8080"
-    healthcheck:
-      # TODO: replace with HTTP check once GET /api/health endpoint is implemented
-      test: ["CMD", "node", "-e", "require('net').connect(8080,'127.0.0.1').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
     networks:
       - oliveto
       - postgresql_network
@@ -25,15 +18,27 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=oliveto
-      - traefik.http.routers.oliveto.rule=Host(`olivetocontabilidade.com`) || Host(`www.olivetocontabilidade.com`)
-      - traefik.http.routers.oliveto.entrypoints=websecure
-      - traefik.http.routers.oliveto.tls.certresolver=letsencrypt
-      - traefik.http.services.oliveto.loadbalancer.server.port=8080
+      # router dedicado da API
+      - traefik.http.routers.oliveto-api.rule=Host(`api.olivetocontabilidade.com`)
+      - traefik.http.routers.oliveto-api.entrypoints=websecure
+      - traefik.http.routers.oliveto-api.tls.certresolver=letsencrypt
+      - traefik.http.services.oliveto-api.loadbalancer.server.port=8080
+      # segurança básica de headers
+      - traefik.http.middlewares.oliveto-api-headers.headers.stsSeconds=31536000
+      - traefik.http.middlewares.oliveto-api-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.oliveto-api-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.oliveto-api-headers.headers.browserXssFilter=true
+      - traefik.http.routers.oliveto-api.middlewares=oliveto-api-headers
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   oliveto:
     name: oliveto
-    driver: bridge
+    external: true          # criado pelo compose do front (fonte da verdade)
   postgresql_network:
     name: postgresql-tiqw_default
     external: true

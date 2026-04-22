@@ -11,7 +11,9 @@
       "Bash(npx prettier --write test/modules/auth/auth.service.spec.ts test/modules/auth/auth.controller.spec.ts 2>&1)",
       "Bash(npx eslint test/modules/auth/*.spec.ts --quiet 2>&1)",
       "Bash(npm install:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npm outdated:*)",
+      "Bash(npm update:*)"
     ]
   }
 }

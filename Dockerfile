@@ -12,8 +12,11 @@ RUN npm ci
 
 COPY . .
 
-# Build only — migrations run at container startup, not at build time
-RUN npx nest build && npx prisma generate
+# Use the CLI binary directly (more reliable than npx in Alpine)
+# Fail fast if dist/main.js is not produced
+RUN node_modules/.bin/nest build && \
+    node_modules/.bin/prisma generate && \
+    test -f dist/main.js || (echo "❌ dist/main.js not found — nest build failed" && exit 1)
 
 # ── Stage 2: Production ───────────────────────────────────────────────────────
 FROM node:20-alpine AS production
@@ -37,9 +40,10 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 COPY --from=builder /app/dist ./dist
 
 # Regenerate the Prisma client against the production runtime
-RUN npx prisma generate
+RUN node_modules/.bin/prisma generate && \
+    test -f dist/main.js || (echo "❌ dist/main.js missing in production stage" && exit 1)
 
 EXPOSE 8080
 
 # Apply pending migrations, then start the server
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+CMD ["sh", "-c", "node_modules/.bin/prisma migrate deploy && node dist/main"]

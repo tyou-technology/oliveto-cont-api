@@ -20,6 +20,8 @@ services:
       start_period: 60s
     networks:
       - oliveto
+      - postgresql_network
+      - redis_network
     labels:
       - traefik.enable=true
       - traefik.docker.network=oliveto
@@ -32,3 +34,9 @@ networks:
   oliveto:
     name: oliveto
     driver: bridge
+  postgresql_network:
+    name: postgresql-tiqw_default
+    external: true
+  redis_network:
+    name: redis-w8ub_default
+    external: true
